@@ -19,21 +19,3 @@ TypeRush is a competitive typing speed platform. This backend powers real-time r
 | Validation        | Zod                             |
 | Containerization  | Docker + Docker Compose         |
 | CI/CD             | GitHub Actions                  |
-
-## Project Structure
-
-```
-typerush-backend/
-├── src/
-│   ├── config/          # env, database, redis setup
-│   ├── modules/          # feature-based modules (auth, user, race, leaderboard)
-│   ├── sockets/           # socket.io server setup and middleware
-│   ├── middleware/       # auth, error handling, rate limiting
-│   ├── common/            # shared errors, utils, types
-│   ├── app.ts             # express app setup
-│   └── server.ts          # entrypoint
-├── tests/
-├── docker-compose.yml
-├── Dockerfile
-└── tsconfig.json
-```
