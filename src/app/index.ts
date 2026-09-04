@@ -4,12 +4,12 @@ import express, { type Request, type Response } from "express"
 import cors from "cors";
 import {
 
-	StatusCodes,
-	
+    StatusCodes,
+
 } from 'http-status-codes';
 
 
-const app=express();
+const app = express();
 
 
 
@@ -18,23 +18,24 @@ app.use(express.json());
 
 // CORS CONFIG
 app.use(cors(
-{
-    origin:"*"
-}
+    {
+        origin: "*"
+    }
 ))
 
 
 // API 
 
-app.get('/',(res:Response,req:Request)=>{
+app.get('/', (res: Response, req: Request) => {
 
     return res.status(StatusCodes.OK).json({
-        "message":"Your Server now running",
-        "uptime":process.uptime(),
-        "workingDir":process.cwd()
+        "message": "Your Server now running",
+        "uptime": process.uptime(),
+        "workingDir": process.cwd(),
+        "reqMethod":req.method
 
     })
-    
+
 })
 
 
@@ -43,7 +44,7 @@ app.get('/',(res:Response,req:Request)=>{
 // NOT FOUNDED
 
 // EXPORT APP
-export const mainServerApp= app;
+export const mainServerApp = app;
 
 
 
