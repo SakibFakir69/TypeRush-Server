@@ -8,7 +8,7 @@ import {
 	
 } from 'http-status-codes';
 
-import swaggerJSDoc from "swagger-jsdoc";
+
 const app=express();
 
 
@@ -22,8 +22,7 @@ app.use(cors(
     origin:"*"
 }
 ))
-// SETUP SWAGGER UI
-swaggerJSDoc(app);
+
 
 // API 
 
