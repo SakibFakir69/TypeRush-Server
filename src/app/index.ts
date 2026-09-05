@@ -7,6 +7,8 @@ import {
     StatusCodes,
 
 } from 'http-status-codes';
+import { notFound } from "./middleware/not-found.js";
+import { globalError } from "./middleware/error-handler.js";
 
 
 const app = express();
@@ -39,9 +41,12 @@ app.get('/', (res: Response, req: Request) => {
 })
 
 
-// ERROR HANDLING
-// ERROR
+
+
 // NOT FOUNDED
+app.use(notFound)
+// ERROR
+app.use(globalError)
 
 // EXPORT APP
 export const mainServerApp = app;
