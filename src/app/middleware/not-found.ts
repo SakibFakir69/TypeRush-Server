@@ -4,10 +4,13 @@ import { StatusCodes } from "http-status-codes";
 
 
 
-export const notFound = (req:Request,res:Response)=>{
 
-  return   res.status(StatusCodes.NOT_FOUND).json({
-        route:`Not Found This path  [ ${req.url}  ] in project`
-    })
 
-}
+export const notFound = (req: Request, res: Response) => {
+  return res.status(StatusCodes.NOT_FOUND).json({
+    success: false,
+    statusCode: StatusCodes.NOT_FOUND,
+    message: "Route not found",
+    path: req.originalUrl,
+  });
+};
