@@ -1,4 +1,5 @@
 
+import type { Server } from "node:http";
 import { setupSwagger } from "../../docs/swagger.config.js";
 import { mainServerApp } from "./index.js";
 
@@ -7,14 +8,14 @@ if (!process.env.PORT) {
     throw new Error("Please provide port number")
 }
 const PORT = process.env.PORT as unknown as number;
-
+let server:Server;
 
 // RUN SERVER HERE
 (() => {
 
 
     try {
-        mainServerApp.listen(PORT, () => {
+        server=mainServerApp.listen(PORT, () => {
             // SETUP SWAGGER UI
             setupSwagger(mainServerApp);
             console.log(` [ SERVER RUNNING ON THIS PORT ] :  ${PORT}`)
@@ -27,3 +28,18 @@ const PORT = process.env.PORT as unknown as number;
     }
 
 })()
+
+// HANDEL PROCESS
+process.on("SIGINT", ()=>{
+
+    server.close(()=>{
+        process.exit(1);
+    })
+    console.log(" [ SERVER CLOSED ] ")
+})
+process.on("SIGTERM", ()=>{
+    server.close(()=>{
+        process.exit(1);
+    })
+    console.log(" [ SERVER CLOSED ]")
+})

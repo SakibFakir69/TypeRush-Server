@@ -41,8 +41,6 @@ app.get('/', (res: Response, req: Request) => {
 })
 
 
-
-
 // NOT FOUNDED
 app.use(notFound)
 // ERROR
