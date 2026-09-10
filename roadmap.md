@@ -1,2 +1,4 @@
 
-1. work on github team create dif branch
+1. work on user + auth then go front-end
+2. launch web app
+
