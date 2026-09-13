@@ -1,10 +1,18 @@
-import { DB } from "../../../../prisma/db/prisma.db.js";
+import type { Response,Request, NextFunction } from "express";
 
 
 
 
 
-const createUser = ()=>{
+const createUser = (req:Request , res:Response,next:NextFunction)=>{
+
+    try {
+        
+        
+    } catch (error) {
+        next(error);
+        
+    }
     
 };
 
