@@ -27,6 +27,7 @@
     "socket.io": "^4.8.3",
     "swagger-jsdoc": "^6.3.0",
     "swagger-ui-express": "^5.0.1",
+    "temporal-polyfill": "^1.0.5",
     "zod": "^4.6.2"
   },
   "devDependencies": {
