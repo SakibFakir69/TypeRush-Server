@@ -1,5 +1,6 @@
 import dotenv from "dotenv"
 dotenv.config();
+import 'temporal-polyfill/full/global';
 import express, { type Request, type Response } from "express"
 import cors from "cors";
 import {
@@ -9,6 +10,7 @@ import {
 } from 'http-status-codes';
 import { notFound } from "./middleware/not-found.js";
 import { globalError } from "./middleware/error-handler.js";
+import { userRouter } from "./modules/users/user.route.js";
 
 
 const app = express();
@@ -27,6 +29,7 @@ app.use(cors(
 
 
 // API 
+app.use('/api/v1/users', userRouter);
 
 app.get('/', (res: Response, req: Request) => {
 

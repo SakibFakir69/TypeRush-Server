@@ -1,0 +1,17 @@
+
+// use prisma-next
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  fullName  String
+  age       Int?
+  email     String   @unique
+  password  String
+  country   String
+  avatarUrl String?
+  bio       String?
+  createdAt DateTime @default(now())
+  isDelete  Boolean? @default(false)
+  updatedAt  temporal.updatedAt()
+}
