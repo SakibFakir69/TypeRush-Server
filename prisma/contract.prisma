@@ -12,5 +12,6 @@ model User {
   avatarUrl String?
   bio       String?
   createdAt DateTime @default(now())
+  isDelete  Boolean? @default(false)
   updatedAt  temporal.updatedAt()
 }

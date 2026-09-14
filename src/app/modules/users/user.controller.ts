@@ -1,9 +1,10 @@
 import type { Response, Request, NextFunction } from "express";
 import bcrypt from "bcrypt";
 import { ZodError } from "zod";
-import { createUserSchema } from "./user.validation.js";
+import { createUserSchema, type User } from "./user.validation.js";
 import {  DB } from "../../../../prisma/db/prisma.db.js";
-import { StatusCodes } from "http-status-codes";
+import { getStatusCode, getStatusText, StatusCodes } from "http-status-codes";
+import { returnResponse } from "../../../helpers/return-response.js";
 
 const createUser = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -13,10 +14,8 @@ const createUser = async (req: Request, res: Response, next: NextFunction) => {
             email:data.email
         })
         if(isUserExits){
-            return res.status(StatusCodes.BAD_REQUEST).json({
-                "success":false,
-                "message":"Please  provide another email"
-            })
+           
+            return returnResponse(res,false,StatusCodes.BAD_REQUEST,"Please  provide another email")
         }
 
 
@@ -34,10 +33,12 @@ const createUser = async (req: Request, res: Response, next: NextFunction) => {
             bio: data.bio ?? null,
         });
          console.log(user, "CREATED")
-         
+
         const { password, ...userWithoutPassword } = user;
 
-        res.status(201).json(userWithoutPassword);
+        
+       return returnResponse(res,true,StatusCodes.CREATED,"User created successfully",userWithoutPassword)
+
     } catch (error) {
         if (error instanceof ZodError) {
             res.status(400).json({ message: "Validation failed" });
@@ -47,6 +48,8 @@ const createUser = async (req: Request, res: Response, next: NextFunction) => {
         next(error);
     }
 };
+
+
 
 
 export const userController = {
