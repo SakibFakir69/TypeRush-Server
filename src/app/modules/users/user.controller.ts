@@ -53,6 +53,7 @@ const getMe = async (req: Request, res: Response, next: NextFunction) => {
 
     try {
         const userId = req.user?.userId as string;
+
         if (!userId) {
             return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "You are unauthorized");
         }
@@ -99,8 +100,29 @@ const updateUser = async (req: Request, res: Response, next: NextFunction) => {
         next(error);
     }
 };
+const deleteUser = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const userId = req.user?.userId as string;
+
+        if (!userId) {
+            return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "You are unauthorized");
+        }
+
+        const deletedUser = await DB.User.where({ id: userId }).delete();
+
+        if (!deletedUser) {
+            return returnResponse(res, false, StatusCodes.NOT_FOUND, "User not found");
+        }
+
+        return returnResponse(res, true, StatusCodes.OK, "User deleted successfully");
+    } catch (error) {
+        next(error);
+    }
+};
+
+ 
 
 export const userController = {
-    createUser, updateUser,getMe
+    createUser, updateUser,getMe,deleteUser
 
 };
