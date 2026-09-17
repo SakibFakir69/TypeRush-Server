@@ -49,6 +49,26 @@ const createUser = async (req: Request, res: Response, next: NextFunction) => {
     }
 };
 
+const getMe = async (req: Request, res: Response, next: NextFunction) => {
+
+    try {
+        const userId = req.user?.userId as string;
+        if (!userId) {
+            return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "You are unauthorized");
+        }
+
+        const userData = await DB.User.first({id:userId});
+        if(!userData){
+           return returnResponse (res,false, StatusCodes.BAD_REQUEST, "User data not found")
+        }
+        
+        return returnResponse(res,true , StatusCodes.OK, "User data retrieve successfully",userData);
+
+
+    } catch (error) {
+        next(error);
+    }
+}
 
 
 
@@ -81,6 +101,6 @@ const updateUser = async (req: Request, res: Response, next: NextFunction) => {
 };
 
 export const userController = {
-    createUser,updateUser
+    createUser, updateUser,getMe
 
 };
