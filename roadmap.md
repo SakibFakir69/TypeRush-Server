@@ -1,2 +1,4 @@
 
-1. work on github team create dif branch
+1. make perfect auth add ( google login + otp send + email provider )
+2. 
+

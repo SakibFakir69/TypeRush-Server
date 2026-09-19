@@ -1,0 +1,18 @@
+// use prisma-8
+model User {
+  id            String               @id @default(uuid())
+  name          String
+  fullName      String
+  age           Int?
+  email         String               @unique
+  password      String?
+  country       String?
+  googleId      String?              @unique
+  authProvider  String               @default("local") 
+  emailVerified Boolean              @default(false)
+  avatarUrl     String?
+  bio           String?
+  createdAt     DateTime             @default(now())
+  isDelete      Boolean?             @default(false)
+  updatedAt     temporal.updatedAt()
+}
