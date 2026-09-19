@@ -11,6 +11,7 @@ import {
 import { notFound } from "./middleware/not-found.js";
 import { globalError } from "./middleware/error-handler.js";
 import { userRouter } from "./modules/users/user.route.js";
+import { authRouter } from "./modules/auth/auth.route.js";
 
 
 const app = express();
@@ -30,6 +31,7 @@ app.use(cors(
 
 // API 
 app.use('/api/v1/users', userRouter);
+app.use('/api/v1/auth', authRouter);
 
 app.get('/', (res: Response, req: Request) => {
 
