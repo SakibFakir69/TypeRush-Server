@@ -1,4 +1,4 @@
 
-1. work on user + auth then go front-end
-2. launch web app
+1. make perfect auth add ( google login + otp send + email provider )
+2. 
 

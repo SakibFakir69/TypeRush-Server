@@ -2,6 +2,7 @@
 import type { Server } from "node:http";
 import { setupSwagger } from "../../docs/swagger.config.js";
 import { mainServerApp } from "./index.js";
+import { redis } from "../config/redis-config.js";
 
 
 if (!process.env.PORT) {
@@ -16,6 +17,10 @@ let server:Server;
 
     try {
         server=mainServerApp.listen(PORT, () => {
+
+            redis.on("connect", ()=>{
+                console.log("[ REDIS CONNECTED ]")
+            })
             // SETUP SWAGGER UI
             setupSwagger(mainServerApp);
             console.log(` [ SERVER RUNNING ON THIS PORT ] :  ${PORT}`)

@@ -22,6 +22,13 @@
                   "kind": "scalar"
                 }
               },
+              "authProvider": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "avatarUrl": {
                 "nullable": true,
                 "type": {
@@ -37,7 +44,7 @@
                 }
               },
               "country": {
-                "nullable": false,
+                "nullable": true,
                 "type": {
                   "codecId": "pg/text@1",
                   "kind": "scalar"
@@ -57,8 +64,22 @@
                   "kind": "scalar"
                 }
               },
+              "emailVerified": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
               "fullName": {
                 "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "googleId": {
+                "nullable": true,
                 "type": {
                   "codecId": "pg/text@1",
                   "kind": "scalar"
@@ -86,7 +107,7 @@
                 }
               },
               "password": {
-                "nullable": false,
+                "nullable": true,
                 "type": {
                   "codecId": "pg/text@1",
                   "kind": "scalar"
@@ -106,6 +127,9 @@
                 "age": {
                   "column": "age"
                 },
+                "authProvider": {
+                  "column": "authProvider"
+                },
                 "avatarUrl": {
                   "column": "avatarUrl"
                 },
@@ -121,8 +145,14 @@
                 "email": {
                   "column": "email"
                 },
+                "emailVerified": {
+                  "column": "emailVerified"
+                },
                 "fullName": {
                   "column": "fullName"
+                },
+                "googleId": {
+                  "column": "googleId"
                 },
                 "id": {
                   "column": "id"
@@ -160,6 +190,15 @@
                   "nativeType": "int4",
                   "nullable": true
                 },
+                "authProvider": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "local"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
                 "avatarUrl": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
@@ -173,7 +212,7 @@
                 "country": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
-                  "nullable": false
+                  "nullable": true
                 },
                 "createdAt": {
                   "codecId": "pg/timestamptz-temporal@1",
@@ -189,10 +228,24 @@
                   "nativeType": "text",
                   "nullable": false
                 },
+                "emailVerified": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": false
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
                 "fullName": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
                   "nullable": false
+                },
+                "googleId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
                 },
                 "id": {
                   "codecId": "pg/text@1",
@@ -216,7 +269,7 @@
                 "password": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
-                  "nullable": false
+                  "nullable": true
                 },
                 "updatedAt": {
                   "codecId": "pg/timestamptz-temporal@1",
@@ -236,6 +289,11 @@
                   "columns": [
                     "email"
                   ]
+                },
+                {
+                  "columns": [
+                    "googleId"
+                  ]
                 }
               ]
             }
@@ -245,7 +303,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "498ea7701503b4fd1f7e6bf9ccbe6580295ed9a9ac8d5ddfda5db65e2c557ef3"
+    "storageHash": "e036ab2e8648db13e07858cf34c0b43fe4556097c356e00ffe7afcc6b0226da0"
   },
   "execution": {
     "executionHash": "1ee550cd320a5366b0e3c4db22632d129c8219671a1cb515315b0b1e0d97535d",
