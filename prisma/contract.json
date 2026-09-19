@@ -71,6 +71,13 @@
                   "kind": "scalar"
                 }
               },
+              "isDelete": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
               "name": {
                 "nullable": false,
                 "type": {
@@ -119,6 +126,9 @@
                 },
                 "id": {
                   "column": "id"
+                },
+                "isDelete": {
+                  "column": "isDelete"
                 },
                 "name": {
                   "column": "name"
@@ -189,6 +199,15 @@
                   "nativeType": "text",
                   "nullable": false
                 },
+                "isDelete": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": false
+                  },
+                  "nativeType": "bool",
+                  "nullable": true
+                },
                 "name": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
@@ -226,7 +245,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "8ae9292c902697517d475bd6c8b70a484b82994550848da9c8d9ccee8139698e"
+    "storageHash": "498ea7701503b4fd1f7e6bf9ccbe6580295ed9a9ac8d5ddfda5db65e2c557ef3"
   },
   "execution": {
     "executionHash": "1ee550cd320a5366b0e3c4db22632d129c8219671a1cb515315b0b1e0d97535d",
