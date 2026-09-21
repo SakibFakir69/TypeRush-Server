@@ -6,7 +6,7 @@ import bcrypt from "bcrypt"
 import { DB } from "../../../../prisma/db/prisma.db.js";
 import jwt from "jsonwebtoken"
 import { setCookies } from "../../../helpers/set-cookies.js";
-import { string } from "zod";
+import { redis } from "../../../config/redis-config.js";
 
 const userLogin = async (req: Request, res: Response, next: NextFunction) => {
 
@@ -94,17 +94,17 @@ const refreshToken = async (req: Request, res: Response, next: NextFunction) => 
             userId: hashPassword?.id,
             email: hashPassword?.email,
             name: hashPassword?.name
-
         }
 
         const accessToken = jwt.sign(payload, process.env.JWT_SECRET_FOR_ACCESS_TOKEN as string, {
             expiresIn: "15m"
         })
+
         const data ={
             accessToken: accessToken
         }
-        return returnResponse(res,true,StatusCodes.CREATED, "Access token created",data);
 
+        return returnResponse(res,true,StatusCodes.CREATED, "Access token created",data);
 
     } catch (error) {
         next(error);
@@ -112,6 +112,47 @@ const refreshToken = async (req: Request, res: Response, next: NextFunction) => 
     }
 }
 
+
+
+const forgotPassword =async (req: Request, res: Response, next: NextFunction) => {
+    try {
+
+        const {email} = req.body as {
+            email: string 
+        }
+        if(!email){
+            return returnResponse(res, false, StatusCodes.BAD_REQUEST, "Please provide your email")
+        }
+        const isAlreadyExitsOtp = await redis.get(`email:${email}byOtp`);
+        if(isAlreadyExitsOtp){
+            return returnResponse(res, false, StatusCodes.BAD_REQUEST, "Already otp sent this email")
+
+        }
+        const genrateOtp = 12345
+        // ADD FUNCTION
+        const sentEmail = await redis.setex(`email:${email}byOtp`, 60*3, genrateOtp);
+
+        return returnResponse(res, true, StatusCodes.OK, `OTP sent ${email} `)
+
+
+    } catch (error) {
+        next(error);
+        
+    }
+}
+
+const resetPassword =async (req: Request, res: Response, next: NextFunction) => {
+    try {
+
+        
+    } catch (error) {
+        next(error);
+        
+    }
+}
+
+
+
 export const authController = {
-    userLogin, userLogout, refreshToken
+    userLogin, userLogout, refreshToken,forgotPassword,resetPassword
 }
