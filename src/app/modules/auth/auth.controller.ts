@@ -3,12 +3,12 @@ import type { Response, Request, NextFunction } from "express";
 import { returnResponse } from "../../../helpers/return-response.js";
 import { StatusCodes } from "http-status-codes";
 import bcrypt from "bcrypt"
-import { DB } from "../../../../prisma/db/prisma.db.js";
+import {  DB } from "../../../../prisma/db/prisma.db.js";
 import jwt from "jsonwebtoken"
 import { setCookies } from "../../../helpers/set-cookies.js";
 import { redis } from "../../../config/redis-config.js";
 import { generateOtp } from "../../../helpers/otp-code.js";
-import { OTP_TTL } from "../../../const/auth.const.js";
+import { COOLDOWN, OTP_TTL } from "../../../const/auth.const.js";
 import { hashOtp } from "../../../utils/auth/has-otp.js";
 
 
@@ -118,43 +118,88 @@ const refreshToken = async (req: Request, res: Response, next: NextFunction) => 
 
 
 
-const forgotPassword =async (req: Request, res: Response, next: NextFunction) => {
-    try {
+const forgotPassword = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email: rawEmail } = req.body as { email?: unknown };
 
-        const {email} = req.body as {
-            email: string 
-        }
-        if(!email){
-            return returnResponse(res, false, StatusCodes.BAD_REQUEST, "Please provide your email")
-        }
-        const isAlreadyExitsOtp = await redis.get(`email:${email}byOtp`);
-        if(isAlreadyExitsOtp){
-            return returnResponse(res, false, StatusCodes.BAD_REQUEST, "Already otp sent this email")
-
-        }
-        const OTP=generateOtp();
-
-        // ADD FUNCTION
-        const sentEmail = await redis.setex(`email:${email}byOtp`, 60*3,OTP);
-
-        return returnResponse(res, true, StatusCodes.OK, `OTP sent ${email} `)
-
-
-    } catch (error) {
-        next(error);
-        
+    if (typeof rawEmail !== 'string' || !/^\S+@\S+\.\S+$/.test(rawEmail.trim())) {
+      return returnResponse(res, false, StatusCodes.BAD_REQUEST, 'Please provide a valid email');
     }
-}
 
-const resetPassword =async (req: Request, res: Response, next: NextFunction) => {
-    try {
+    const email = rawEmail.trim().toLowerCase();
+    const otpKey = `otp:reset:${email}`;
+    const cooldownKey = `otp:cooldown:${email}`;
 
-        
-    } catch (error) {
-        next(error);
-        
+    // atomic cooldown lock (no race between check and set)
+    const acquired = await redis.set(cooldownKey, '1', 'EX', COOLDOWN, 'NX');
+
+    if (!acquired) {
+      return returnResponse(res, false, StatusCodes.TOO_MANY_REQUESTS, 'Please wait before requesting another OTP');
     }
-}
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const user = await  DB.User.first({email:email})
+    if (user) {
+      const otp = generateOtp();
+      await redis.set(otpKey, hashOtp(otp), 'EX', OTP_TTL);
+      await redis.del(`otp:attempts:${email}`);
+
+      try {
+    
+        // await sendOtpEmail(email, otp);
+      } catch (err) {
+        await redis.del(otpKey, cooldownKey); 
+        throw err;
+      }
+    }
+
+    
+    return returnResponse(res, true, StatusCodes.OK, 'If this email is registered, an OTP has been sent');
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+
+
+const resetPassword = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { resetToken, password } = req.body as { resetToken?: unknown; password?: unknown };
+
+    if (typeof resetToken !== 'string' || typeof password !== 'string') {
+      return returnResponse(res, false, StatusCodes.BAD_REQUEST, 'Reset token and new password required');
+    }
+    if (password.length < 8 || password.length > 128) {
+      return returnResponse(res, false, StatusCodes.BAD_REQUEST, 'Password must be 8-128 characters');
+    }
+
+    // atomic get + delete: token works exactly once
+    const email = await redis.getdel(`reset:token:${hashOtp(resetToken)}`);
+    if (!email) {
+      return returnResponse(res, false, StatusCodes.BAD_REQUEST, 'Invalid or expired reset token');
+    }
+
+    const user = await DB.User.first({email:email});
+
+    if (!user) {
+      return returnResponse(res, false, StatusCodes.BAD_REQUEST, 'Invalid or expired reset token');
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+
+   
+    await DB.User.where({ id: user.id }).update({ password: passwordHash });
+
+   
+    await redis.del(`refresh:${user.id}`);
+  
+
+    return returnResponse(res, true, StatusCodes.OK, 'Password reset successful');
+  } catch (error) {
+    next(error);
+  }
+};
 
 
 
