@@ -1,0 +1,256 @@
+[
+  {
+    "id": "column.public.user.authProvider",
+    "label": "Add column \"authProvider\" to \"user\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "authProvider",
+        "table": "user"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"authProvider\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "authProvider"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"authProvider\"",
+        "sql": "ALTER TABLE \"public\".\"user\" ADD COLUMN \"authProvider\" text DEFAULT 'local' NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"authProvider\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "authProvider"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.user.emailVerified",
+    "label": "Add column \"emailVerified\" to \"user\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "emailVerified",
+        "table": "user"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"emailVerified\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "emailVerified"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"emailVerified\"",
+        "sql": "ALTER TABLE \"public\".\"user\" ADD COLUMN \"emailVerified\" bool DEFAULT false NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"emailVerified\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "emailVerified"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.user.googleId",
+    "label": "Add column \"googleId\" to \"user\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "googleId",
+        "table": "user"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"googleId\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "googleId"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"googleId\"",
+        "sql": "ALTER TABLE \"public\".\"user\" ADD COLUMN \"googleId\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"googleId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "googleId"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "alterNullability.dropNotNull.user.country",
+    "label": "Drop NOT NULL on \"user\".\"country\"",
+    "operationClass": "widening",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "country",
+        "table": "user"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"country\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "country"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop NOT NULL on \"country\"",
+        "sql": "ALTER TABLE \"public\".\"user\" ALTER COLUMN \"country\" DROP NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"country\" is nullable",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"is_nullable\" = $4)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "country",
+          "YES"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "alterNullability.dropNotNull.user.password",
+    "label": "Drop NOT NULL on \"user\".\"password\"",
+    "operationClass": "widening",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "password",
+        "table": "user"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"password\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "password"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop NOT NULL on \"password\"",
+        "sql": "ALTER TABLE \"public\".\"user\" ALTER COLUMN \"password\" DROP NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"password\" is nullable",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"is_nullable\" = $4)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "password",
+          "YES"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.user.user_googleId_key",
+    "label": "Add unique constraint on \"user\" (googleId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "user_googleId_key",
+        "table": "user"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"user_googleId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "user_googleId_key",
+          "public",
+          "\"public\".\"user\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"user_googleId_key\"",
+        "sql": "ALTER TABLE \"public\".\"user\" ADD CONSTRAINT \"user_googleId_key\" UNIQUE (\"googleId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"user_googleId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "user_googleId_key",
+          "public",
+          "\"public\".\"user\""
+        ]
+      }
+    ]
+  }
+]

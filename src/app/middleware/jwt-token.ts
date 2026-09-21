@@ -23,6 +23,7 @@ export const verifyToken = (req: Request, res: Response, next: NextFunction) => 
     
     const headerToken = req.headers.authorization?.replace("Bearer ", "");
     const token = cookieToken ?? headerToken;
+    
 
     if (!token) {
         return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "Unauthorized user");
