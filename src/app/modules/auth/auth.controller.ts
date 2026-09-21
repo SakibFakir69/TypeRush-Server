@@ -1,4 +1,4 @@
-
+import {  timingSafeEqual } from 'crypto';
 import type { Response, Request, NextFunction } from "express";
 import { returnResponse } from "../../../helpers/return-response.js";
 import { StatusCodes } from "http-status-codes";
@@ -7,6 +7,10 @@ import { DB } from "../../../../prisma/db/prisma.db.js";
 import jwt from "jsonwebtoken"
 import { setCookies } from "../../../helpers/set-cookies.js";
 import { redis } from "../../../config/redis-config.js";
+import { generateOtp } from "../../../helpers/otp-code.js";
+import { OTP_TTL } from "../../../const/auth.const.js";
+import { hashOtp } from "../../../utils/auth/has-otp.js";
+
 
 const userLogin = async (req: Request, res: Response, next: NextFunction) => {
 
@@ -128,9 +132,10 @@ const forgotPassword =async (req: Request, res: Response, next: NextFunction) =>
             return returnResponse(res, false, StatusCodes.BAD_REQUEST, "Already otp sent this email")
 
         }
-        const genrateOtp = 12345
+        const OTP=generateOtp();
+
         // ADD FUNCTION
-        const sentEmail = await redis.setex(`email:${email}byOtp`, 60*3, genrateOtp);
+        const sentEmail = await redis.setex(`email:${email}byOtp`, 60*3,OTP);
 
         return returnResponse(res, true, StatusCodes.OK, `OTP sent ${email} `)
 
@@ -153,6 +158,39 @@ const resetPassword =async (req: Request, res: Response, next: NextFunction) => 
 
 
 
+const verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email: rawEmail, otp } = req.body as { email?: string; otp?: string };
+    if (typeof rawEmail !== 'string' || typeof otp !== 'string') {
+      return returnResponse(res, false, StatusCodes.BAD_REQUEST, 'Email and OTP required');
+    }
+
+    const email = rawEmail.trim().toLowerCase();
+    const attemptsKey = `otp:attempts:${email}`;
+    const otpKey = `otp:reset:${email}`;
+
+    const attempts = await redis.incr(attemptsKey);
+    if (attempts === 1) await redis.expire(attemptsKey, OTP_TTL);
+    if (attempts > 5) {
+      await redis.del(otpKey); 
+      return returnResponse(res, false, StatusCodes.TOO_MANY_REQUESTS, 'Too many attempts. Request a new OTP');
+    }
+
+    const stored = await redis.get(otpKey);
+    const a = Buffer.from(stored ?? '');
+    const b = Buffer.from(hashOtp(otp));
+    if (!stored || a.length !== b.length || !timingSafeEqual(a, b)) {
+      return returnResponse(res, false, StatusCodes.BAD_REQUEST, 'Invalid or expired OTP');
+    }
+
+    await redis.del(otpKey, attemptsKey); 
+   
+    return returnResponse(res, true, StatusCodes.OK, 'OTP verified');
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const authController = {
-    userLogin, userLogout, refreshToken,forgotPassword,resetPassword
+    userLogin, userLogout, refreshToken,forgotPassword,resetPassword,verifyOtp,
 }
