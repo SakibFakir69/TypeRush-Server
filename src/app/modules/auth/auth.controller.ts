@@ -10,6 +10,7 @@ import { redis } from "../../../config/redis-config.js";
 import { generateOtp } from "../../../helpers/otp-code.js";
 import { COOLDOWN, OTP_TTL } from "../../../const/auth.const.js";
 import { hashOtp } from "../../../utils/auth/has-otp.js";
+import sendOtpEmail from '../../../utils/otp/otp.js';
 
 
 const userLogin = async (req: Request, res: Response, next: NextFunction) => {
@@ -139,19 +140,24 @@ const forgotPassword = async (req: Request, res: Response, next: NextFunction) =
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const user = await  DB.User.first({email:email})
+    
     if (user) {
       const otp = generateOtp();
       await redis.set(otpKey, hashOtp(otp), 'EX', OTP_TTL);
       await redis.del(`otp:attempts:${email}`);
 
       try {
+        console.log('brevo key prefix:', process.env.BREVO_API_KEY?.slice(0, 20));
+     
     
-        // await sendOtpEmail(email, otp);
+        await sendOtpEmail(email, otp);
+           console.log("send email")
       } catch (err) {
         await redis.del(otpKey, cooldownKey); 
         throw err;
       }
     }
+    
 
     
     return returnResponse(res, true, StatusCodes.OK, 'If this email is registered, an OTP has been sent');
@@ -202,7 +208,6 @@ const resetPassword = async (req: Request, res: Response, next: NextFunction) =>
 };
 
 
-
 const verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email: rawEmail, otp } = req.body as { email?: string; otp?: string };
@@ -235,6 +240,12 @@ const verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
     next(error);
   }
 };
+
+
+
+
+
+
 
 export const authController = {
     userLogin, userLogout, refreshToken,forgotPassword,resetPassword,verifyOtp,
