@@ -11,6 +11,8 @@ import { generateOtp } from "../../../helpers/otp-code.js";
 import { COOLDOWN, OTP_TTL } from "../../../const/auth.const.js";
 import { hashOtp } from "../../../utils/auth/has-otp.js";
 import sendOtpEmail from '../../../utils/otp/otp.js';
+import generateResetToken from '../../../utils/auth/gen-token.js';
+import hashToken from '../../../utils/auth/has-token.js';
 
 
 const userLogin = async (req: Request, res: Response, next: NextFunction) => {
@@ -222,7 +224,7 @@ const verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
     const attempts = await redis.incr(attemptsKey);
     if (attempts === 1) await redis.expire(attemptsKey, OTP_TTL);
     if (attempts > 5) {
-      await redis.del(otpKey); 
+      await redis.del(otpKey);
       return returnResponse(res, false, StatusCodes.TOO_MANY_REQUESTS, 'Too many attempts. Request a new OTP');
     }
 
@@ -233,9 +235,13 @@ const verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
       return returnResponse(res, false, StatusCodes.BAD_REQUEST, 'Invalid or expired OTP');
     }
 
-    await redis.del(otpKey, attemptsKey); 
-   
-    return returnResponse(res, true, StatusCodes.OK, 'OTP verified');
+    await redis.del(otpKey, attemptsKey);
+
+  
+    const resetToken = generateResetToken(); 
+    const resetTokenKey = `otp:reset-token:${email}`;
+    await redis.set(resetTokenKey, hashToken(resetToken), 'EX', 300); 
+    return returnResponse(res, true, StatusCodes.OK, 'OTP verified', { resetToken });
   } catch (error) {
     next(error);
   }

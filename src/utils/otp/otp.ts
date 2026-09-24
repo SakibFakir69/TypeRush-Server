@@ -1,8 +1,32 @@
-
 import { brevo } from '../../config/brevo-email-config.js';
 import { OTP_TTL } from '../../const/auth.const.js';
 
-const buildOtpEmailHtml = (otp: string): string => `
+type OtpPurpose = 'reset-password' | 'verify-email' | 'change-email' | 'login';
+
+const OTP_COPY: Record<OtpPurpose, { subject: string; heading: string; description: string }> = {
+  'reset-password': {
+    subject: 'Your TypeRush password reset code',
+    heading: 'Password Reset Code',
+    description: 'Use the code below to reset your password.',
+  },
+  'verify-email': {
+    subject: 'Verify your TypeRush email',
+    heading: 'Verify Your Email',
+    description: 'Use the code below to verify your email address.',
+  },
+  'change-email': {
+    subject: 'Confirm your new TypeRush email',
+    heading: 'Confirm Email Change',
+    description: 'Use the code below to confirm your new email address.',
+  },
+  'login': {
+    subject: 'Your TypeRush login code',
+    heading: 'Login Code',
+    description: 'Use the code below to log in to your account.',
+  },
+};
+
+const buildOtpEmailHtml = (otp: string, heading: string, description: string): string => `
 <!DOCTYPE html>
 <html>
 <body style="margin:0; padding:0; background-color:#f4f4f5; font-family: Arial, sans-serif;">
@@ -17,9 +41,9 @@ const buildOtpEmailHtml = (otp: string): string => `
           </tr>
           <tr>
             <td style="padding:32px 24px;">
-              <h2 style="margin:0 0 12px; color:#111827; font-size:18px;">Password Reset Code</h2>
+              <h2 style="margin:0 0 12px; color:#111827; font-size:18px;">${heading}</h2>
               <p style="color:#4b5563; font-size:14px; line-height:1.5; margin:0 0 24px;">
-                Use the code below to reset your password. It expires in ${OTP_TTL / 60} minutes.
+                ${description} It expires in ${OTP_TTL / 60} minutes.
               </p>
               <div style="background:#f4f4f5; border-radius:6px; padding:16px; text-align:center; margin-bottom:24px;">
                 <span style="font-size:32px; font-weight:bold; letter-spacing:8px; color:#111827;">${otp}</span>
@@ -37,10 +61,16 @@ const buildOtpEmailHtml = (otp: string): string => `
 </html>
 `;
 
-const sendOtpEmail = async (email: string, otp: string): Promise<void> => {
+const sendOtpEmail = async (
+  email: string,
+  otp: string,
+  purpose: OtpPurpose = 'reset-password',
+): Promise<void> => {
+  const { subject, heading, description } = OTP_COPY[purpose];
+
   await brevo.transactionalEmails.sendTransacEmail({
-    subject: 'Your TypeRush password reset code',
-    htmlContent: buildOtpEmailHtml(otp),
+    subject,
+    htmlContent: buildOtpEmailHtml(otp, heading, description),
     textContent: `Your OTP is ${otp}. It expires in ${OTP_TTL / 60} minutes.`,
     sender: { name: 'TypeRush', email: process.env.MAIL_FROM! },
     to: [{ email }],
