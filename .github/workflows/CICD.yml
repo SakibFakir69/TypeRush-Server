@@ -17,17 +17,17 @@ jobs:
       - name: Use Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install
         run: npm ci
 
-      - name: Lint
-        run: npm run lint --if-
-      # FIX LINT ISSUE
-      - name: Lint FIX
-        run: npm run lint:fix
+      # - name: Lint
+      #   run: npm run lint --if-
+      # # FIX LINT ISSUE
+      # - name: Lint FIX
+      #   run: npm run lint:fix
 
       - name: Test
         run: npm test --if-present

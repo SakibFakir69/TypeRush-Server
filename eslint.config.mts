@@ -16,6 +16,16 @@ export default defineConfig([
       globals: globals.node, // server project — not browser
     },
   },
+  {
+    ignores: [
+      '.cursor/**',
+      '.devin/**',
+      'migrations/**',
+      'prisma/contract.d.ts',
+      'dist/**',
+      'node_modules/**',
+    ],
+  },
   tseslint.configs.recommendedTypeChecked, // stricter than 'recommended' — needs type info
   {
     languageOptions: {
