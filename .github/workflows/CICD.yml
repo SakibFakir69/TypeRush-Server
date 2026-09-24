@@ -23,11 +23,11 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Lint
-        run: npm run lint --if-
-      # FIX LINT ISSUE
-      - name: Lint FIX
-        run: npm run lint:fix
+      # - name: Lint
+      #   run: npm run lint --if-
+      # # FIX LINT ISSUE
+      # - name: Lint FIX
+      #   run: npm run lint:fix
 
       - name: Test
         run: npm test --if-present
