@@ -1,18 +1,49 @@
 // use prisma-8
+
 model User {
-  id            String               @id @default(uuid())
+  id            String   @id @default(uuid())
   name          String
   fullName      String
   age           Int?
-  email         String               @unique
+  email         String   @unique
   password      String?
   country       String?
-  googleId      String?              @unique
-  authProvider  String               @default("local") 
-  emailVerified Boolean              @default(false)
+  googleId      String?  @unique
+  authProvider  String   @default("local")
+  emailVerified Boolean  @default(false)
   avatarUrl     String?
   bio           String?
-  createdAt     DateTime             @default(now())
-  isDelete      Boolean?             @default(false)
+  isDelete      Boolean  @default(false)
+  createdAt     DateTime @default(now())
   updatedAt     temporal.updatedAt()
+  results       Result[]
+}
+
+model Result {
+  id          String   @id @default(uuid())
+  paragraphId String
+  paragraph   Paragraph @relation(fields: [paragraphId], references: [id])
+
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+
+  wpm         Float
+  accuracy    Float
+  errors      Int
+  timeTaken   Int
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([paragraphId])
+}
+
+model Paragraph {
+  id         String   @id @default(uuid())
+  content    String
+  category   String?
+  difficulty String?
+  wordCount  Int
+  createdAt  DateTime @default(now())
+
+  results    Result[]
 }
