@@ -44,6 +44,5 @@ model Paragraph {
   difficulty String?
   wordCount  Int
   createdAt  DateTime @default(now())
-
   results    Result[]
 }
