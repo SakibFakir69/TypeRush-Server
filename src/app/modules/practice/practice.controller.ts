@@ -55,45 +55,80 @@ const addPracticeContent = async (
 };
 
 const practiceAllTopic = async (req: Request, res: Response, next: NextFunction) => {
-
     try {
+        const { limit, page, orderBy, sortBy, search } = req.query;
 
+        const take = Math.min(Math.max(Number(limit) || 10, 1), 100);
+        const currentPage = Math.max(Number(page) || 1, 1);
+        const skip = (currentPage - 1) * take;
+        const sortField = String(orderBy || 'createdAt');
+        const sortDir = sortBy === 'asc' ? 'asc' : 'desc';
+        const searchValue = typeof search === 'string' ? search.trim() : '';
 
+        let query = DB.Paragraph;
 
+        if (searchValue) {
+            query = query.where((p) => p.content.ilike(`%${searchValue}%`));
+        }
+
+        const rowData = await query
+            .orderBy((p) => (sortDir === 'asc' ? p[sortField].asc() : p[sortField].desc()))
+            .limit(take)
+            .offset(skip)
+            .all();
+
+        const { total } = await (searchValue
+            ? DB.Paragraph.where((p) => p.content.ilike(`%${searchValue}%`))
+            : DB.Paragraph
+        ).aggregate((a) => ({ total: a.count() }));
+
+        res.status(200).json({
+            success: true,
+            data: rowData,
+            pagination: {
+                page: currentPage,
+                limit: take,
+                total,
+                totalPages: Math.ceil(total / take),
+            },
+        });
     } catch (error) {
         next(error);
-
     }
+};
 
-}
-const getPracticeParagraph = async (req: Request, res: Response, next: NextFunction) => {
-    try {
+// const getPracticeParagraph = async (req: Request, res: Response, next: NextFunction) => {
+//     try {
 
-    } catch (error) {
-        next(error);
-    }
-}
 
-const submitPracticeResult = async (req: Request, res: Response, next: NextFunction) => {
-    try {
+//     } catch (error) {
+//         next(error);
+//     }
+// }
 
-    } catch (error) {
-        next(error);
-    }
-}
-const practiceLeaderboard = async (req: Request, res: Response, next: NextFunction) => {
-    try {
+// const submitPracticeResult = async (req: Request, res: Response, next: NextFunction) => {
+//     try {
 
-    } catch (error) {
-        next(error);
+//     } catch (error) {
+//         next(error);
+//     }
+// }
 
-    }
-}
+
+// const practiceLeaderboard = async (req: Request, res: Response, next: NextFunction) => {
+//     try {
+//         // by lastest submit
+
+//     } catch (error) {
+//         next(error);
+
+//     }
+// }
 
 
 
 
 export const practiceController = {
-    practiceAllTopic, addPracticeContent, practiceLeaderboard,
-    getPracticeParagraph, submitPracticeResult
+    practiceAllTopic, addPracticeContent
+
 }
