@@ -97,14 +97,27 @@ const practiceAllTopic = async (req: Request, res: Response, next: NextFunction)
     }
 };
 
-// const getPracticeParagraph = async (req: Request, res: Response, next: NextFunction) => {
-//     try {
+const getPracticeParagraph = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const {id:paragraphId} = req.params as { id:string};
+
+        if(!paragraphId){
+          return  returnResponse(res,false, StatusCodes.BAD_REQUEST, "Not found paragraph id")
+        }
+
+        const paragraphData = await DB.Paragraph.where({id:paragraphId}).first();
+
+        if(!paragraphData){
+            return returnResponse(res,true, StatusCodes.NOT_FOUND , "Paragraph data not founded");
+        }
+        return returnResponse(res, true,StatusCodes.OK, "Paragraph data", paragraphData);
 
 
-//     } catch (error) {
-//         next(error);
-//     }
-// }
+
+    } catch (error) {
+        next(error);
+    }
+}
 
 // const submitPracticeResult = async (req: Request, res: Response, next: NextFunction) => {
 //     try {
@@ -129,6 +142,6 @@ const practiceAllTopic = async (req: Request, res: Response, next: NextFunction)
 
 
 export const practiceController = {
-    practiceAllTopic, addPracticeContent
+    practiceAllTopic, addPracticeContent , getPracticeParagraph
 
 }

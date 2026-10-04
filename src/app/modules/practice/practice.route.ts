@@ -6,7 +6,7 @@ const router = Router();
 
 
 router.get("/topics", practiceController.practiceAllTopic);
-
+router.get('/:id', practiceController.getPracticeParagraph)
 
 // router.post("/result", practiceController.submitPracticeResult);
 // router.get("/leaderboard", practiceController.practiceLeaderboard);
