@@ -1,6 +1,6 @@
 import type { Response, Request, NextFunction } from "express";
 import { DB } from "../../../../prisma/db/prisma.db.js";
-import { createParagraphSchema } from "./pratice.validation.js";
+import { createParagraphSchema, submitResultBodySchema, type SubmitResultBody } from "./pratice.validation.js";
 
 import { returnResponse } from "../../../helpers/return-response.js";
 import { StatusCodes } from "http-status-codes";
@@ -104,28 +104,51 @@ const getPracticeParagraph = async (req: Request, res: Response, next: NextFunct
         if(!paragraphId){
           return  returnResponse(res,false, StatusCodes.BAD_REQUEST, "Not found paragraph id")
         }
-
         const paragraphData = await DB.Paragraph.where({id:paragraphId}).first();
-
         if(!paragraphData){
             return returnResponse(res,true, StatusCodes.NOT_FOUND , "Paragraph data not founded");
         }
         return returnResponse(res, true,StatusCodes.OK, "Paragraph data", paragraphData);
-
-
-
     } catch (error) {
         next(error);
     }
 }
 
-// const submitPracticeResult = async (req: Request, res: Response, next: NextFunction) => {
-//     try {
 
-//     } catch (error) {
-//         next(error);
-//     }
-// }
+
+
+const submitPracticeResult = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "User not authenticated");
+    }
+
+    const parsed = submitResultBodySchema.safeParse(req.body);
+    
+
+    if (!parsed.success) {
+      return returnResponse(res, false, StatusCodes.BAD_REQUEST, "Invalid request data", {
+        errors: parsed.error.flatten().fieldErrors,
+      });
+    }
+
+    const data: SubmitResultBody = parsed.data;
+    
+
+    const dataSubmit = {
+        ...data, userId:userId
+
+    }
+    const result = await DB.Result.create(dataSubmit);
+
+
+    return returnResponse(res, true, StatusCodes.CREATED, "Result saved", result);
+  } catch (error) {
+    next(error);
+  }
+};
 
 
 // const practiceLeaderboard = async (req: Request, res: Response, next: NextFunction) => {
@@ -142,6 +165,6 @@ const getPracticeParagraph = async (req: Request, res: Response, next: NextFunct
 
 
 export const practiceController = {
-    practiceAllTopic, addPracticeContent , getPracticeParagraph
+    practiceAllTopic, addPracticeContent , getPracticeParagraph ,submitPracticeResult
 
 }
