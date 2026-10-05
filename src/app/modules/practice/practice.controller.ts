@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { Response, Request, NextFunction } from "express";
 import { DB } from "../../../../prisma/db/prisma.db.js";
-import { createParagraphSchema, submitResultBodySchema, type SubmitResultBody } from "./pratice.validation.js";
+import { createParagraphSchema, resultQuerySchema, submitResultBodySchema, type SubmitResultBody } from "./pratice.validation.js";
 
 import { returnResponse } from "../../../helpers/return-response.js";
 import { StatusCodes } from "http-status-codes";
+import { sortOrder } from "../../../utils/practice/utils.practice.js";
 
 
 
@@ -151,20 +153,80 @@ const submitPracticeResult = async (req: Request, res: Response, next: NextFunct
 };
 
 
-// const practiceLeaderboard = async (req: Request, res: Response, next: NextFunction) => {
-//     try {
-//         // by lastest submit
+const practiceLeaderboard = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const parsed = resultQuerySchema.safeParse(req.query);
 
-//     } catch (error) {
-//         next(error);
+    if (!parsed.success) {
+      return returnResponse(res, false, StatusCodes.BAD_REQUEST, "Invalid query parameters", {
+        errors: parsed.error.flatten().fieldErrors,
+      });
+    }
 
-//     }
-// }
+    const { paragraphId, limit, cursor } = parsed.data;
+
+    let query = DB.Result.orderBy(sortOrder);
+
+    if (paragraphId) {
+      query = query.where({ paragraphId });
+    }
+
+    if (cursor) {
+      const prev = await DB.Result.where({ id: cursor }).first();
+      if (!prev) {
+        return returnResponse(res, false, StatusCodes.BAD_REQUEST, "Invalid cursor");
+      }
+
+      query = query.cursor({
+        wpm: prev.wpm,
+        accuracy: prev.accuracy,
+        timeTaken: prev.timeTaken,
+        createdAt: prev.createdAt,
+        id: prev.id,
+      });
+    }
+
+    const rows = await query
+      .select("id", "userId", "wpm", "accuracy", "timeTaken", "createdAt")
+      .limit(limit + 1)
+      .all();
+
+    const hasNextPage = rows.length > limit;
+    const page = hasNextPage ? rows.slice(0, limit) : rows;
+
+    const userIds = [...new Set(page.map((r) => r.userId).filter((id): id is string => !!id))];
+
+    const users = userIds.length
+      ? await DB.User.select("id", "name")
+          .where((u) => u.id.in(userIds))
+          .all()
+      : [];
+
+    const nameById = new Map(users.map((u) => [u.id, u.name]));
+
+    const data = page.map((r) => ({
+      userName: r.userId ? (nameById.get(r.userId) ?? null) : null,
+      wpm: r.wpm,
+      accuracy: r.accuracy,
+      timeTaken: r.timeTaken,
+      createdAt: r.createdAt,
+    }));
+
+    const nextCursor = hasNextPage ? page[page.length - 1]!.id : null;
+
+    return returnResponse(res, true, StatusCodes.OK, "Leaderboard fetched", {
+      data,
+      nextCursor,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 
 
 
 export const practiceController = {
-    practiceAllTopic, addPracticeContent , getPracticeParagraph ,submitPracticeResult
+    practiceAllTopic, addPracticeContent , getPracticeParagraph ,submitPracticeResult, practiceLeaderboard
 
 }
