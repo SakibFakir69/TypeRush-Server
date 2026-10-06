@@ -6,114 +6,105 @@ import { createParagraphSchema, resultQuerySchema, submitResultBodySchema, type 
 import { returnResponse } from "../../../helpers/return-response.js";
 import { StatusCodes } from "http-status-codes";
 import { sortOrder } from "../../../utils/practice/utils.practice.js";
+import { PracticeServices } from "./practice.service.js";
 
 
 
 const addPracticeContent = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
+  req: Request,
+  res: Response,
+  next: NextFunction
 ) => {
-    try {
-        const userId = req.user?.userId;
-        const data = createParagraphSchema.safeParse(req.body);
-
-        if (!data.success) {
-            return returnResponse(
-                res,
-                false,
-                StatusCodes.BAD_REQUEST,
-                "Please provide correct data",
-                data.error.flatten()
-            );
-        }
-        const createData = await DB.Paragraph.create({
-            content: data.data.content,
-            wordCount: data.data.wordCount,
-            category: data.data.category ?? null,
-            difficulty: data.data.difficulty ?? null,
-            results: (results) =>
-                results.create({
-                    userId: userId ?? null,
-                    wpm: 0,
-                    accuracy: 0,
-                    errors: 0,
-                    timeTaken: 0,
-                }),
-        });
-
-
-
-        return returnResponse(
-            res,
-            true,
-            StatusCodes.CREATED,
-            "Content Created Successfully",
-            createData
-        );
-    } catch (error) {
-        next(error);
+  try {
+    const userId = req.user?.userId as string;
+    if(!userId){
+      return returnResponse(res, false,StatusCodes.UNAUTHORIZED , "User unauthorize")
     }
+
+    const result = createParagraphSchema.safeParse(req.body);
+
+    if (!result.success) {
+      return returnResponse(
+        res,
+        false,
+        StatusCodes.BAD_REQUEST,
+        "Please provide correct data",
+        result.error.flatten()
+      );
+    }
+
+    const createData = await PracticeServices.createData(result.data, userId);
+   
+    return returnResponse(
+      res,
+      true,
+      StatusCodes.CREATED,
+      "Content Created Successfully",
+      createData
+    );
+  } catch (error) {
+    next(error);
+  }
 };
 
 const practiceAllTopic = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const { limit, page, orderBy, sortBy, search } = req.query;
+  try {
+    const { limit, page, orderBy, sortBy, search } = req.query;
 
-        const take = Math.min(Math.max(Number(limit) || 10, 1), 100);
-        const currentPage = Math.max(Number(page) || 1, 1);
-        const skip = (currentPage - 1) * take;
-        const sortField = String(orderBy || 'createdAt');
-        const sortDir = sortBy === 'asc' ? 'asc' : 'desc';
-        const searchValue = typeof search === 'string' ? search.trim() : '';
+    const take = Math.min(Math.max(Number(limit) || 10, 1), 100);
+    const currentPage = Math.max(Number(page) || 1, 1);
+    const skip = (currentPage - 1) * take;
+    const sortField = String(orderBy || 'createdAt');
+    const sortDir = sortBy === 'asc' ? 'asc' : 'desc';
+    const searchValue = typeof search === 'string' ? search.trim() : '';
 
-        let query = DB.Paragraph;
+    let query = DB.Paragraph;
 
-        if (searchValue) {
-            query = query.where((p) => p.content.ilike(`%${searchValue}%`));
-        }
-
-        const rowData = await query
-            .orderBy((p) => (sortDir === 'asc' ? p[sortField].asc() : p[sortField].desc()))
-            .limit(take)
-            .offset(skip)
-            .all();
-
-        const { total } = await (searchValue
-            ? DB.Paragraph.where((p) => p.content.ilike(`%${searchValue}%`))
-            : DB.Paragraph
-        ).aggregate((a) => ({ total: a.count() }));
-
-        res.status(200).json({
-            success: true,
-            data: rowData,
-            pagination: {
-                page: currentPage,
-                limit: take,
-                total,
-                totalPages: Math.ceil(total / take),
-            },
-        });
-    } catch (error) {
-        next(error);
+    if (searchValue) {
+      query = query.where((p) => p.content.ilike(`%${searchValue}%`));
     }
+
+    const rowData = await query
+      .orderBy((p) => (sortDir === 'asc' ? p[sortField].asc() : p[sortField].desc()))
+      .limit(take)
+      .offset(skip)
+      .all();
+
+    const { total } = await (searchValue
+      ? DB.Paragraph.where((p) => p.content.ilike(`%${searchValue}%`))
+      : DB.Paragraph
+    ).aggregate((a) => ({ total: a.count() }));
+
+    res.status(200).json({
+      success: true,
+      data: rowData,
+      pagination: {
+        page: currentPage,
+        limit: take,
+        total,
+        totalPages: Math.ceil(total / take),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
 const getPracticeParagraph = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const {id:paragraphId} = req.params as { id:string};
+  try {
+    const { id: paragraphId } = req.params as { id: string };
 
-        if(!paragraphId){
-          return  returnResponse(res,false, StatusCodes.BAD_REQUEST, "Not found paragraph id")
-        }
-        const paragraphData = await DB.Paragraph.where({id:paragraphId}).first();
-        if(!paragraphData){
-            return returnResponse(res,true, StatusCodes.NOT_FOUND , "Paragraph data not founded");
-        }
-        return returnResponse(res, true,StatusCodes.OK, "Paragraph data", paragraphData);
-    } catch (error) {
-        next(error);
+    if (!paragraphId) {
+      return returnResponse(res, false, StatusCodes.BAD_REQUEST, "Not found paragraph id")
     }
+    const paragraphData = await DB.Paragraph.where({ id: paragraphId }).first();
+    if (!paragraphData) {
+      return returnResponse(res, true, StatusCodes.NOT_FOUND, "Paragraph data not founded");
+    }
+    return returnResponse(res, true, StatusCodes.OK, "Paragraph data", paragraphData);
+  } catch (error) {
+    next(error);
+  }
 }
 
 
@@ -128,7 +119,7 @@ const submitPracticeResult = async (req: Request, res: Response, next: NextFunct
     }
 
     const parsed = submitResultBodySchema.safeParse(req.body);
-    
+
 
     if (!parsed.success) {
       return returnResponse(res, false, StatusCodes.BAD_REQUEST, "Invalid request data", {
@@ -137,10 +128,10 @@ const submitPracticeResult = async (req: Request, res: Response, next: NextFunct
     }
 
     const data: SubmitResultBody = parsed.data;
-    
+
 
     const dataSubmit = {
-        ...data, userId:userId
+      ...data, userId: userId
 
     }
     const result = await DB.Result.create(dataSubmit);
@@ -198,8 +189,8 @@ const practiceLeaderboard = async (req: Request, res: Response, next: NextFuncti
 
     const users = userIds.length
       ? await DB.User.select("id", "name")
-          .where((u) => u.id.in(userIds))
-          .all()
+        .where((u) => u.id.in(userIds))
+        .all()
       : [];
 
     const nameById = new Map(users.map((u) => [u.id, u.name]));
@@ -227,6 +218,6 @@ const practiceLeaderboard = async (req: Request, res: Response, next: NextFuncti
 
 
 export const practiceController = {
-    practiceAllTopic, addPracticeContent , getPracticeParagraph ,submitPracticeResult, practiceLeaderboard
+  practiceAllTopic, addPracticeContent, getPracticeParagraph, submitPracticeResult, practiceLeaderboard
 
 }
