@@ -97,11 +97,11 @@ const getPracticeParagraph = async (req: Request, res: Response, next: NextFunct
     if (!paragraphId) {
       return returnResponse(res, false, StatusCodes.BAD_REQUEST, "Not found paragraph id")
     }
-    const paragraphData = await DB.Paragraph.where({ id: paragraphId }).first();
-    if (!paragraphData) {
+    const result = await PracticeServices.getPracticeParagraph(paragraphId);
+    if (!result) {
       return returnResponse(res, true, StatusCodes.NOT_FOUND, "Paragraph data not founded");
     }
-    return returnResponse(res, true, StatusCodes.OK, "Paragraph data", paragraphData);
+    return returnResponse(res, true, StatusCodes.OK, "Paragraph data", result);
   } catch (error) {
     next(error);
   }

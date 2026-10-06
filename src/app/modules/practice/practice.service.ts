@@ -4,15 +4,15 @@ import type { CreateParagraphInput } from "./pratice.validation.js";
 
 
 
-const createData =async (data:CreateParagraphInput , userId:string) => {
+const createData = async (data: CreateParagraphInput, userId: string) => {
 
-    const create_paragraph_data= await DB.Paragraph.create({
+    const create_paragraph_data = await DB.Paragraph.create({
 
         content: data.content,
         wordCount: data.wordCount,
         category: data.category ?? null,
         difficulty: data.difficulty ?? null,
-        
+
         results: (results) =>
             results.create({
                 userId: userId ?? null,
@@ -22,11 +22,19 @@ const createData =async (data:CreateParagraphInput , userId:string) => {
                 timeTaken: 0,
             }),
     });
-    return create_paragraph_data; 
+    return create_paragraph_data;
 
 
 }
 
-export const PracticeServices= {
-    createData
+const getPracticeParagraph = async (paragraphId: string) => {
+
+    const paragraphData = await DB.Paragraph.where({ id: paragraphId }).first();
+    return paragraphData;
+
+
+}
+
+export const PracticeServices = {
+    createData,getPracticeParagraph
 }
