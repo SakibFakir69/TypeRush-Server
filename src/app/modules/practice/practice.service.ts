@@ -1,6 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+import { SubmitResultBody } from './pratice.validation';
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { DB } from "../../../../prisma/db/prisma.db.js";
 import type { CreateParagraphInput } from "./pratice.validation.js";
+import { returnResponse } from '../../../helpers/return-response.js';
+import { StatusCodes } from 'http-status-codes';
 
 
 
@@ -35,6 +39,26 @@ const getPracticeParagraph = async (paragraphId: string) => {
 
 }
 
+const submitPracticeResult = async (
+  data: SubmitResultBody,
+  userId: string
+) => {
+    
+    const createData = {
+        ...data, userId
+    }
+
+
+  const result = await DB.Result.create(createData);
+
+
+  return result;
+};
+
+
+
+
+
 export const PracticeServices = {
-    createData,getPracticeParagraph
+    createData, getPracticeParagraph, submitPracticeResult
 }

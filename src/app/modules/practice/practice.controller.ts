@@ -17,8 +17,8 @@ const addPracticeContent = async (
 ) => {
   try {
     const userId = req.user?.userId as string;
-    if(!userId){
-      return returnResponse(res, false,StatusCodes.UNAUTHORIZED , "User unauthorize")
+    if (!userId) {
+      return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "User unauthorize")
     }
 
     const result = createParagraphSchema.safeParse(req.body);
@@ -34,7 +34,7 @@ const addPracticeContent = async (
     }
 
     const createData = await PracticeServices.createData(result.data, userId);
-   
+
     return returnResponse(
       res,
       true,
@@ -115,27 +115,32 @@ const submitPracticeResult = async (req: Request, res: Response, next: NextFunct
     const userId = req.user?.userId;
 
     if (!userId) {
-      return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "User not authenticated");
+      return returnResponse(
+        res,
+        false,
+        StatusCodes.UNAUTHORIZED,
+        "User not authenticated"
+      );
     }
 
     const parsed = submitResultBodySchema.safeParse(req.body);
 
-
     if (!parsed.success) {
-      return returnResponse(res, false, StatusCodes.BAD_REQUEST, "Invalid request data", {
-        errors: parsed.error.flatten().fieldErrors,
-      });
+      return returnResponse(
+        res,
+        false,
+        StatusCodes.BAD_REQUEST,
+        "Invalid request data",
+        {
+          errors: parsed.error.flatten().fieldErrors,
+        }
+      );
     }
 
-    const data: SubmitResultBody = parsed.data;
-
-
-    const dataSubmit = {
-      ...data, userId: userId
-
-    }
-    const result = await DB.Result.create(dataSubmit);
-
+    const result = await PracticeServices.submitPracticeResult(
+      parsed.data,
+      userId
+    );
 
     return returnResponse(res, true, StatusCodes.CREATED, "Result saved", result);
   } catch (error) {
