@@ -4,13 +4,13 @@ import { practiceController } from "./practice.controller.js";
 
 const router = Router();
 
-
+// Paragraphs (practice content)
 router.get("/topics", practiceController.practiceAllTopic);
-router.get("/paragraph", practiceController.getPracticeParagraph);
-router.post("/result", practiceController.submitPracticeResult);
-router.get("/leaderboard", practiceController.practiceLeaderboard);
+router.get("/:id", practiceController.getPracticeParagraph);
+router.post("/submit", practiceController.addPracticeContent); 
 
-// ADMIN 
-router.post("/admin/content", practiceController.addPracticeContent);
+// Results (test submissions)
+router.post("/results", practiceController.submitPracticeResult);
+router.get("/results", practiceController.practiceLeaderboard);
 
 export const practiceRoutes = router;
