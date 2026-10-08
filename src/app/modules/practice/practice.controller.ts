@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { Response, Request, NextFunction } from "express";
 import { DB } from "../../../../prisma/db/prisma.db.js";
-import { createParagraphSchema, resultQuerySchema, submitResultBodySchema, type SubmitResultBody } from "./pratice.validation.js";
+import { createParagraphSchema, resultQuerySchema, submitResultBodySchema } from "./pratice.validation.js";
 
 import { returnResponse } from "../../../helpers/return-response.js";
 import { StatusCodes } from "http-status-codes";

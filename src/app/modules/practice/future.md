@@ -1,6 +1,6 @@
 
 
-read code and logic
-fix leadboard and routing
+[ create service for 2 controller ]
 
-1. add redis for caching
+read code and logic
+add redis for caching
