@@ -1,5 +1,5 @@
 // use prisma-8
-
+// add role
 model User {
   id            String   @id @default(uuid())
   name          String

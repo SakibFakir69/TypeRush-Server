@@ -93,6 +93,7 @@ const practiceAllTopic = async (req: Request, res: Response, next: NextFunction)
 const getPracticeParagraph = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id: paragraphId } = req.params as { id: string };
+    console.log( paragraphId)
 
     if (!paragraphId) {
       return returnResponse(res, false, StatusCodes.BAD_REQUEST, "Not found paragraph id")
@@ -141,6 +142,8 @@ const submitPracticeResult = async (req: Request, res: Response, next: NextFunct
       parsed.data,
       userId
     );
+    console.log(result , "[ RESULT ]  ");
+
 
     return returnResponse(res, true, StatusCodes.CREATED, "Result saved", result);
   } catch (error) {
@@ -151,6 +154,8 @@ const submitPracticeResult = async (req: Request, res: Response, next: NextFunct
 
 const practiceLeaderboard = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    console.log("leader board")
+    
     const parsed = resultQuerySchema.safeParse(req.query);
 
     if (!parsed.success) {

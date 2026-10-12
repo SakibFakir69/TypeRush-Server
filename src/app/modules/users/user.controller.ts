@@ -50,7 +50,8 @@ const createUser = async (req: Request, res: Response, next: NextFunction) => {
 };
 
 const getMe = async (req: Request, res: Response, next: NextFunction) => {
-
+    
+    console.log(req.user ,'[ CALL GETME ] ')
     try {
         const userId = req.user?.userId as string;
 

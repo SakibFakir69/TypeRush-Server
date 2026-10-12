@@ -21,7 +21,7 @@ export const setCookies = (res: Response, name: string, value: string,time?:numb
     res.cookie(name, value, {
         httpOnly: true,
         secure: isProd,
-        sameSite: "lax",
+          sameSite: isProd ? "none" : "lax",
         maxAge:time
     })
 

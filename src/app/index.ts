@@ -13,7 +13,7 @@ import { globalError } from "./middleware/error-handler.js";
 import { userRouter } from "./modules/users/user.route.js";
 import { authRouter } from "./modules/auth/auth.route.js";
 import { practiceRoutes } from "./modules/practice/practice.route.js";
-
+import cookieParser from "cookie-parser";
 
 const app = express();
 
@@ -21,13 +21,17 @@ const app = express();
 
 // EXTRACT JSON
 app.use(express.json());
+// COOKIE PARSER
+app.use(cookieParser());
 
 // CORS CONFIG
-app.use(cors(
-    {
-        origin: "*"
-    }
-))
+app.use(
+  cors({
+    origin: ["http://localhost:3000" , "*"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    credentials: true,
+  })
+);
 
 
 // API 

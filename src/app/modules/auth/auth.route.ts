@@ -12,8 +12,8 @@ router.post('/logout', authController.userLogout);
 router.post('/refresh', authController.refreshToken);
 router.post('/verify',authController.verifyOtp);
 router.post('/forgot-password',authController.forgotPassword);
-router.post('/reset-password',verifyToken,authController.resetPassword);
-
+router.post('/reset-password',authController.resetPassword);
+// change password
 
 router.get(
   "/google",
