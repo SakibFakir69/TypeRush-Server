@@ -17,4 +17,4 @@ router.post("/:id/join", joinContest);
 router.delete("/:id/leave", leaveContest);
 router.delete("/:id", deleteContest);
 
-export default router;
+export const contestRouter = router;
