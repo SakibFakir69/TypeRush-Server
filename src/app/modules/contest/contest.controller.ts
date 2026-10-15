@@ -1,11 +1,20 @@
-
-
 import type { Request, Response } from "express";
+import { ZodError } from "zod";
 import { DB as prisma } from "../../../../prisma/db/prisma.db.js";
+import {
+  createContestSchema,
+  getContestsQuerySchema,
+  getContestByIdSchema,
+  joinContestSchema,
+  leaveContestSchema,
+  deleteContestSchema,
+} from "./contest.validation.js"; 
+import { handleZodError } from "../../../helpers/zod-error-helper.js";
 
 export const createContest = async (req: Request, res: Response) => {
   try {
-    const { name, content, time, userId } = req.body;
+    const { body } = createContestSchema.parse({ body: req.body });
+    const { name, content, time, userId } = body;
 
     const contest = await prisma.contest.create({
       data: { name, content, time, userId },
@@ -13,6 +22,7 @@ export const createContest = async (req: Request, res: Response) => {
 
     return res.status(201).json({ success: true, data: contest });
   } catch (error) {
+    if (error instanceof ZodError) return handleZodError(res, error);
     console.error(error);
     return res.status(500).json({ success: false, message: "Failed to create contest" });
   }
@@ -20,25 +30,27 @@ export const createContest = async (req: Request, res: Response) => {
 
 export const getContests = async (req: Request, res: Response) => {
   try {
-    const { userId } = req.query;
+    const { query } = getContestsQuerySchema.parse({ query: req.query });
+    const { userId } = query;
 
     const contests = await prisma.contest.findMany({
-      where: userId ? { userId: String(userId) } : undefined,
+      where: userId ? { userId } : undefined,
       include: { user: true },
       orderBy: { createdAt: "desc" },
     });
 
     return res.status(200).json({ success: true, data: contests });
   } catch (error) {
+    if (error instanceof ZodError) return handleZodError(res, error);
     console.error(error);
     return res.status(500).json({ success: false, message: "Failed to fetch contests" });
   }
 };
 
-
 export const getContestById = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const { params } = getContestByIdSchema.parse({ params: req.params });
+    const { id } = params;
 
     const contest = await prisma.contest.findUnique({
       where: { id },
@@ -54,6 +66,7 @@ export const getContestById = async (req: Request, res: Response) => {
 
     return res.status(200).json({ success: true, data: contest });
   } catch (error) {
+    if (error instanceof ZodError) return handleZodError(res, error);
     console.error(error);
     return res.status(500).json({ success: false, message: "Failed to fetch contest" });
   }
@@ -61,8 +74,9 @@ export const getContestById = async (req: Request, res: Response) => {
 
 export const joinContest = async (req: Request, res: Response) => {
   try {
-    const { id: contestId } = req.params;
-    const userId = req.body.userId; // swap for req.user.id once auth middleware is wired up
+    const { params, body } = joinContestSchema.parse({ params: req.params, body: req.body });
+    const contestId = params.id;
+    const userId = body.userId; // swap for req.user.id once auth middleware is wired up
 
     const participant = await prisma.contestParticipant.create({
       data: { contestId, userId },
@@ -70,6 +84,7 @@ export const joinContest = async (req: Request, res: Response) => {
 
     return res.status(201).json({ success: true, data: participant });
   } catch (error: any) {
+    if (error instanceof ZodError) return handleZodError(res, error);
     if (error.code === "P2002") {
       return res.status(409).json({ success: false, message: "Already joined this contest" });
     }
@@ -80,8 +95,9 @@ export const joinContest = async (req: Request, res: Response) => {
 
 export const leaveContest = async (req: Request, res: Response) => {
   try {
-    const { id: contestId } = req.params;
-    const userId = req.body.userId; // swap for req.user.id once auth middleware is wired up
+    const { params, body } = leaveContestSchema.parse({ params: req.params, body: req.body });
+    const contestId = params.id;
+    const userId = body.userId; // swap for req.user.id once auth middleware is wired up
 
     await prisma.contestParticipant.delete({
       where: { userId_contestId: { userId, contestId } },
@@ -89,6 +105,7 @@ export const leaveContest = async (req: Request, res: Response) => {
 
     return res.status(200).json({ success: true, message: "Left contest" });
   } catch (error: any) {
+    if (error instanceof ZodError) return handleZodError(res, error);
     if (error.code === "P2025") {
       return res.status(404).json({ success: false, message: "Not a participant" });
     }
@@ -99,9 +116,10 @@ export const leaveContest = async (req: Request, res: Response) => {
 
 export const deleteContest = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const requesterId = req.body.userId; // swap for req.user.id once auth middleware is wired up
-    const requesterRole = req.body.role;  // swap for req.user.role
+    const { params, body } = deleteContestSchema.parse({ params: req.params, body: req.body });
+    const { id } = params;
+    const requesterId = body.userId; // swap for req.user.id once auth middleware is wired up
+    const requesterRole = body.role;  // swap for req.user.role
 
     const contest = await prisma.contest.findUnique({ where: { id } });
 
@@ -117,6 +135,7 @@ export const deleteContest = async (req: Request, res: Response) => {
 
     return res.status(200).json({ success: true, message: "Contest deleted" });
   } catch (error) {
+    if (error instanceof ZodError) return handleZodError(res, error);
     console.error(error);
     return res.status(500).json({ success: false, message: "Failed to delete contest" });
   }
