@@ -14,6 +14,7 @@ import sendOtpEmail from '../../../utils/otp/otp.js';
 import generateResetToken from '../../../utils/auth/gen-token.js';
 import hashToken from '../../../utils/auth/has-token.js';
 
+
 const userLogin = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, password } = req.body as { email: string; password: string };
@@ -207,6 +208,79 @@ const resetPassword = async (req: Request, res: Response, next: NextFunction) =>
 };
 
 
+
+const verifyEmail = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { email: rawEmail, otp } = req.body as { email?: string; otp?: string };
+        if (typeof rawEmail !== 'string' || typeof otp !== 'string') {
+            return returnResponse(res, false, StatusCodes.BAD_REQUEST, 'Email and OTP required');
+        }
+
+        const email = rawEmail.trim().toLowerCase();
+        const otpKey = `otp:verify:${email}`;
+        const attemptsKey = `otp:verify:attempts:${email}`;
+
+        const attempts = await redis.incr(attemptsKey);
+        if (attempts === 1) await redis.expire(attemptsKey, OTP_TTL);
+        if (attempts > 5) {
+            await redis.del(otpKey);
+            return returnResponse(res, false, StatusCodes.TOO_MANY_REQUESTS, 'Too many attempts. Request a new code');
+        }
+
+        const stored = await redis.get(otpKey);
+        const a = Buffer.from(stored ?? '');
+        const b = Buffer.from(hashOtp(otp));
+        if (!stored || a.length !== b.length || !timingSafeEqual(a, b)) {
+            return returnResponse(res, false, StatusCodes.BAD_REQUEST, 'Invalid or expired code');
+        }
+
+        await redis.del(otpKey, attemptsKey);
+
+        const user = await DB.User.first({ email });
+        if (!user) {
+            return returnResponse(res, false, StatusCodes.BAD_REQUEST, 'User not found');
+        }
+
+        await DB.User.where({ id: user.id }).update({ emailVerified: true });
+
+        return returnResponse(res, true, StatusCodes.OK, 'Email verified successfully');
+
+    } catch (error) {
+        next(error);
+    }
+};
+
+
+
+const resendVerifyOtp = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { email: rawEmail } = req.body as { email?: unknown };
+        if (typeof rawEmail !== 'string' || !/^\S+@\S+\.\S+$/.test(rawEmail.trim())) {
+            return returnResponse(res, false, StatusCodes.BAD_REQUEST, 'Please provide a valid email');
+        }
+
+        const email = rawEmail.trim().toLowerCase();
+        const cooldownKey = `otp:verify:cooldown:${email}`;
+        const acquired = await redis.set(cooldownKey, '1', 'EX', COOLDOWN, 'NX');
+        if (!acquired) {
+            return returnResponse(res, false, StatusCodes.TOO_MANY_REQUESTS, 'Please wait before requesting another code');
+        }
+
+        const user = await DB.User.first({ email });
+        if (user && !user.emailVerified) {
+            const otp = generateOtp();
+            await redis.set(`otp:verify:${email}`, hashOtp(otp), 'EX', OTP_TTL);
+            await redis.del(`otp:verify:attempts:${email}`);
+            await sendOtpEmail(email, otp).catch(err => console.error(err));
+        }
+
+        return returnResponse(res, true, StatusCodes.OK, 'If this email needs verification, a code has been sent');
+
+    } catch (error) {
+        next(error);
+    }
+};
+
 const verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email: rawEmail, otp } = req.body as { email?: string; otp?: string };
@@ -234,10 +308,9 @@ const verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
 
     await redis.del(otpKey, attemptsKey);
 
-
     const resetToken = generateResetToken();
-    const resetTokenKey = `reset:token:${hashOtp(resetToken)}`;   
-    await redis.set(resetTokenKey, email, 'EX', 500);              
+    const resetTokenKey = `reset:token:${hashOtp(resetToken)}`;
+    await redis.set(resetTokenKey, email, 'EX', 500);
     return returnResponse(res, true, StatusCodes.OK, 'OTP verified', { resetToken });
 
   } catch (error) {
@@ -249,12 +322,6 @@ const verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
 
 
 
-
-
-
-
-
-
 export const authController = {
-  userLogin, userLogout, refreshToken, forgotPassword, resetPassword, verifyOtp,
+  userLogin, userLogout, refreshToken, forgotPassword, resetPassword, verifyEmail,resendVerifyOtp,verifyOtp
 }

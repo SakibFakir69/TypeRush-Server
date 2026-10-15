@@ -7,13 +7,14 @@ import passport from "./../../../config/passport.js"
 
 const router = Router();
 
-router.post('/login',authController.userLogin);
+router.post('/login', authController.userLogin);
 router.post('/logout', authController.userLogout);
 router.post('/refresh', authController.refreshToken);
-router.post('/verify',authController.verifyOtp);
-router.post('/forgot-password',authController.forgotPassword);
-router.post('/reset-password',authController.resetPassword);
-// change password
+router.post('/verify', authController.verifyOtp);
+router.post('/forgot-password', authController.forgotPassword);
+router.post('/reset-password', authController.resetPassword);
+router.post('/verify-email', authController.verifyEmail);
+router.post('/resend-verify-otp', authController.resendVerifyOtp);
 
 router.get(
   "/google",
