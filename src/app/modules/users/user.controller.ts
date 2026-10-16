@@ -35,6 +35,7 @@ const createUser = async (req: Request, res: Response, next: NextFunction) => {
             avatarUrl: data.avatarUrl ?? null,
             bio: data.bio ?? null,
             emailVerified: false,
+            role:data?.role ?? "USER"
         });
 
         const { password, ...userWithoutPassword } = user;

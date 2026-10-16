@@ -29,6 +29,23 @@
     "namespaces": {
       "public": {
         "enum": {
+          "ConditionContest": {
+            "codecId": "pg/text@1",
+            "members": [
+              {
+                "name": "RUNNING",
+                "value": "RUNNING"
+              },
+              {
+                "name": "FINISHED",
+                "value": "FINISHED"
+              },
+              {
+                "name": "UPCOMING",
+                "value": "UPCOMING"
+              }
+            ]
+          },
           "UserRole": {
             "codecId": "pg/text@1",
             "members": [
@@ -50,6 +67,19 @@
         "models": {
           "Contest": {
             "fields": {
+              "condition": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                },
+                "valueSet": {
+                  "entityKind": "enum",
+                  "entityName": "ConditionContest",
+                  "namespaceId": "public",
+                  "plane": "domain"
+                }
+              },
               "content": {
                 "nullable": false,
                 "type": {
@@ -135,6 +165,9 @@
             },
             "storage": {
               "fields": {
+                "condition": {
+                  "column": "condition"
+                },
                 "content": {
                   "column": "content"
                 },
@@ -679,7 +712,29 @@
         "entries": {
           "table": {
             "contest": {
+              "checks": [
+                {
+                  "expression": "\"condition\" IN ('RUNNING', 'FINISHED', 'UPCOMING')",
+                  "name": "contest_condition_check_2acdb471",
+                  "prefix": "contest_condition_check"
+                }
+              ],
               "columns": {
+                "condition": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "UPCOMING"
+                  },
+                  "nativeType": "text",
+                  "nullable": false,
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "ConditionContest",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
+                },
                 "content": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
@@ -1136,6 +1191,14 @@
             }
           },
           "valueSet": {
+            "ConditionContest": {
+              "kind": "valueSet",
+              "values": [
+                "RUNNING",
+                "FINISHED",
+                "UPCOMING"
+              ]
+            },
             "UserRole": {
               "kind": "valueSet",
               "values": [
@@ -1150,7 +1213,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "103fb4dbdd26b16cfa573d7138aac32f3eab4a1dc39d9ee5ab5e4cbf6183170b"
+    "storageHash": "4efdb783719d547b27575e3327bd2aacd099ab2c8ee6fe621e55f219f7eb6ed3"
   },
   "execution": {
     "executionHash": "32747932e35e7b2cc457d6f7a2f2ed5c409c3c4d2eee399962ffb941319a93cc",

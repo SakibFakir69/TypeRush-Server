@@ -34,7 +34,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'103fb4dbdd26b16cfa573d7138aac32f3eab4a1dc39d9ee5ab5e4cbf6183170b'>;
+  StorageHashBase<'4efdb783719d547b27575e3327bd2aacd099ab2c8ee6fe621e55f219f7eb6ed3'>;
 export type ExecutionHash =
   ExecutionHashBase<'32747932e35e7b2cc457d6f7a2f2ed5c409c3c4d2eee399962ffb941319a93cc'>;
 export type ProfileHash =
@@ -247,6 +247,7 @@ export type FieldOutputTypes = {
       readonly name: CodecTypes['pg/text@1']['output'];
       readonly content: CodecTypes['pg/text@1']['output'];
       readonly time: CodecTypes['pg/float8@1']['output'];
+      readonly condition: 'RUNNING' | 'FINISHED' | 'UPCOMING';
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly userId: CodecTypes['pg/text@1']['output'] | null;
@@ -301,6 +302,7 @@ export type FieldInputTypes = {
       readonly name: CodecTypes['pg/text@1']['input'];
       readonly content: CodecTypes['pg/text@1']['input'];
       readonly time: CodecTypes['pg/float8@1']['input'];
+      readonly condition: 'RUNNING' | 'FINISHED' | 'UPCOMING';
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly userId: CodecTypes['pg/text@1']['input'] | null;
@@ -351,6 +353,7 @@ export type FieldInputTypes = {
 export type StorageColumnTypes = {
   readonly public: {
     readonly contest: {
+      readonly condition: 'RUNNING' | 'FINISHED' | 'UPCOMING';
       readonly content: CodecTypes['pg/text@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
@@ -405,6 +408,7 @@ export type StorageColumnTypes = {
 export type StorageColumnInputTypes = {
   readonly public: {
     readonly contest: {
+      readonly condition: 'RUNNING' | 'FINISHED' | 'UPCOMING';
       readonly content: CodecTypes['pg/text@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
@@ -508,6 +512,7 @@ export namespace Models {
     name: CodecTypes['pg/text@1']['output'];
     content: CodecTypes['pg/text@1']['output'];
     time: CodecTypes['pg/float8@1']['output'];
+    condition: 'RUNNING' | 'FINISHED' | 'UPCOMING';
     createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     userId: CodecTypes['pg/text@1']['output'] | null;
@@ -574,6 +579,15 @@ type ContractBase = Omit<
                   readonly nativeType: 'float8';
                   readonly codecId: 'pg/float8@1';
                   readonly nullable: false;
+                };
+                readonly condition: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/text@1', 'UPCOMING'>;
+                  };
                 };
                 readonly createdAt: {
                   readonly nativeType: 'timestamptz';
@@ -921,6 +935,10 @@ type ContractBase = Omit<
             };
           };
           readonly valueSet: {
+            readonly ConditionContest: {
+              readonly kind: 'valueSet';
+              readonly values: readonly ['RUNNING', 'FINISHED', 'UPCOMING'];
+            };
             readonly UserRole: {
               readonly kind: 'valueSet';
               readonly values: readonly ['ADMIN', 'USER', 'ORG'];
@@ -966,6 +984,10 @@ type ContractBase = Omit<
               readonly time: {
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/float8@1' };
+              };
+              readonly condition: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
               readonly createdAt: {
                 readonly nullable: false;
@@ -1016,6 +1038,7 @@ type ContractBase = Omit<
                 readonly name: { readonly column: 'name' };
                 readonly content: { readonly column: 'content' };
                 readonly time: { readonly column: 'time' };
+                readonly condition: { readonly column: 'condition' };
                 readonly createdAt: { readonly column: 'createdAt' };
                 readonly updatedAt: { readonly column: 'updatedAt' };
                 readonly userId: { readonly column: 'userId' };
@@ -1344,6 +1367,14 @@ type ContractBase = Omit<
               { readonly name: 'ADMIN'; readonly value: 'ADMIN' },
               { readonly name: 'USER'; readonly value: 'USER' },
               { readonly name: 'ORG'; readonly value: 'ORG' },
+            ];
+          };
+          readonly ConditionContest: {
+            readonly codecId: 'pg/text@1';
+            readonly members: readonly [
+              { readonly name: 'RUNNING'; readonly value: 'RUNNING' },
+              { readonly name: 'FINISHED'; readonly value: 'FINISHED' },
+              { readonly name: 'UPCOMING'; readonly value: 'UPCOMING' },
             ];
           };
         };

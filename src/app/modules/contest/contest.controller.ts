@@ -22,19 +22,20 @@ import {
 
 const createContest = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    console.log(" [ call create contest ]")
     const userId = req.user?.userId as string;
     if (!userId) {
       return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "User unauthorized");
     }
-    console.log(req.body, "[ create contest ]")
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const parsed = createContestSchema.safeParse({ body: req.body });
-
     if (!parsed.success) {
-      console.log(JSON.stringify(parsed.error.flatten(), null, 2)); 
-      return returnResponse(res, false, StatusCodes.BAD_REQUEST, "Please provide correct data", parsed.error.flatten());
+      return returnResponse(
+        res,
+        false,
+        StatusCodes.BAD_REQUEST,
+        "Please provide correct data",
+        parsed.error.flatten()
+      );
     }
 
     const { name, content, time } = parsed.data.body;
@@ -76,6 +77,27 @@ const getContests = async (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
+const getMyContests = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user?.userId as string;
+    if (!userId) {
+      return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "User unauthorized");
+    }
+
+    // userId comes from the authenticated session, not a query param — a
+    // client can't pass ?userId=<someone-else> to list someone else's
+    // contests under "my contests".
+    const contests = await DB.Contest.where({ userId })
+      .include("participants")
+      .orderBy((c) => c.createdAt.desc())
+      .all();
+
+    return returnResponse(res, true, StatusCodes.OK, "Your contests fetched", contests);
+  } catch (error) {
+    next(error);
+  }
+};
+
 const getContestById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const parsed = getContestByIdSchema.safeParse({ params: req.params });
@@ -105,6 +127,9 @@ const getContestById = async (req: Request, res: Response, next: NextFunction) =
     next(error);
   }
 };
+
+
+
 
 const joinContest = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -185,9 +210,7 @@ const leaveContest = async (req: Request, res: Response, next: NextFunction) => 
 const deleteContest = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const requesterId = req.user?.userId as string;
-
-    const requesterRole = req.user?.role;
-
+    const requesterRole = req.user?.role as string | undefined;
     if (!requesterId) {
       return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "User unauthorized");
     }
@@ -225,6 +248,7 @@ const deleteContest = async (req: Request, res: Response, next: NextFunction) =>
 export const contestController = {
   createContest,
   getContests,
+  getMyContests,
   getContestById,
   joinContest,
   leaveContest,
