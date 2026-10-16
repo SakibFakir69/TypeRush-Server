@@ -134,18 +134,22 @@ const getContestById = async (req: Request, res: Response, next: NextFunction) =
 const joinContest = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId as string;
+
     if (!userId) {
       return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "User unauthorized");
     }
+    console.log(req.params , userId)
 
     const parsed = joinContestSchema.safeParse({ params: req.params });
+    console.log(parsed , "[ join contest paras params ]")
+
     if (!parsed.success) {
       return returnResponse(
         res,
         false,
         StatusCodes.BAD_REQUEST,
         "Please provide correct data",
-        parsed.error.flatten()
+        parsed.error.flatten().fieldErrors
       );
     }
 
