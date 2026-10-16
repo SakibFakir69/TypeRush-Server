@@ -41,6 +41,7 @@ const userLogin = async (req: Request, res: Response, next: NextFunction) => {
       userId: user.id,
       email: user.email,
       name: user.name,
+      role:user.role
     };
 
     const accessToken = jwt.sign(payload, process.env.JWT_SECRET_FOR_ACCESS_TOKEN as string, {

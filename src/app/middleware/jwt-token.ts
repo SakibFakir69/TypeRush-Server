@@ -6,7 +6,8 @@ import { returnResponse } from "../../helpers/return-response.js";
 export interface AuthPayload {
     userId: string;
     email: string,
-    name: string
+    name: string,
+    role: string
 
 }
 

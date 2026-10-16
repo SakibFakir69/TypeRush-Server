@@ -20,6 +20,7 @@ const addPracticeContent = async (
     if (!userId) {
       return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "User unauthorize")
     }
+    console.log(req.body , '[BODY]')
 
     const result = createParagraphSchema.safeParse(req.body);
 

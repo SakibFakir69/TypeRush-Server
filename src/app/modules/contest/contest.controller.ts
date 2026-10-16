@@ -1,6 +1,7 @@
-import type { Request, Response } from "express";
-import { ZodError } from "zod";
-import { DB as prisma } from "../../../../prisma/db/prisma.db.js";
+import type { Request, Response, NextFunction } from "express";
+import { DB } from "../../../../prisma/db/prisma.db.js";
+import { returnResponse } from "../../../helpers/return-response.js";
+import { StatusCodes } from "http-status-codes";
 import {
   createContestSchema,
   getContestsQuerySchema,
@@ -8,135 +9,224 @@ import {
   joinContestSchema,
   leaveContestSchema,
   deleteContestSchema,
-} from "./contest.validation.js"; 
-import { handleZodError } from "../../../helpers/zod-error-helper.js";
+} from "./contest.validation.js";
 
-export const createContest = async (req: Request, res: Response) => {
+/**
+ * NOTE: userId/role now come from req.user (auth middleware), not the request
+ * body. The old controller took them from req.body as a TODO placeholder —
+ * trusting a client-supplied userId/role is a privilege-escalation bug, so
+ * this rewrite closes it. Update createContestSchema / joinContestSchema /
+ * leaveContestSchema / deleteContestSchema to drop userId (and role, for
+ * delete) from their body shape, since they're no longer read from there.
+ */
+
+const createContest = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { body } = createContestSchema.parse({ body: req.body });
-    const { name, content, time, userId } = body;
+    console.log(" [ call create contest ]")
+    const userId = req.user?.userId as string;
+    if (!userId) {
+      return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "User unauthorized");
+    }
+    console.log(req.body, "[ create contest ]")
 
-    const contest = await prisma.contest.create({
-      data: { name, content, time, userId },
-    });
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const parsed = createContestSchema.safeParse({ body: req.body });
 
-    return res.status(201).json({ success: true, data: contest });
+    if (!parsed.success) {
+      console.log(JSON.stringify(parsed.error.flatten(), null, 2)); 
+      return returnResponse(res, false, StatusCodes.BAD_REQUEST, "Please provide correct data", parsed.error.flatten());
+    }
+
+    const { name, content, time } = parsed.data.body;
+
+    // Prisma 8: .create(...) takes the fields directly, no `data` wrapper.
+    const contest = await DB.Contest.create({ name, content, time, userId });
+
+    return returnResponse(res, true, StatusCodes.CREATED, "Contest created successfully", contest);
   } catch (error) {
-    if (error instanceof ZodError) return handleZodError(res, error);
-    console.error(error);
-    return res.status(500).json({ success: false, message: "Failed to create contest" });
+    next(error);
   }
 };
 
-export const getContests = async (req: Request, res: Response) => {
+const getContests = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { query } = getContestsQuerySchema.parse({ query: req.query });
-    const { userId } = query;
+    const parsed = getContestsQuerySchema.safeParse({ query: req.query });
+    if (!parsed.success) {
+      return returnResponse(
+        res,
+        false,
+        StatusCodes.BAD_REQUEST,
+        "Invalid query parameters",
+        parsed.error.flatten()
+      );
+    }
 
-    const contests = await prisma.contest.findMany({
-      where: userId ? { userId } : undefined,
-      include: { user: true },
-      orderBy: { createdAt: "desc" },
-    });
+    const { userId } = parsed.data.query;
 
-    return res.status(200).json({ success: true, data: contests });
+    let query = DB.Contest.include("user");
+    if (userId) {
+      query = query.where({ userId });
+    }
+
+    const contests = await query.orderBy((c) => c.createdAt.desc()).all();
+
+    return returnResponse(res, true, StatusCodes.OK, "Contests fetched", contests);
   } catch (error) {
-    if (error instanceof ZodError) return handleZodError(res, error);
-    console.error(error);
-    return res.status(500).json({ success: false, message: "Failed to fetch contests" });
+    next(error);
   }
 };
 
-export const getContestById = async (req: Request, res: Response) => {
+const getContestById = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { params } = getContestByIdSchema.parse({ params: req.params });
-    const { id } = params;
+    const parsed = getContestByIdSchema.safeParse({ params: req.params });
+    if (!parsed.success) {
+      return returnResponse(
+        res,
+        false,
+        StatusCodes.BAD_REQUEST,
+        "Please provide correct data",
+        parsed.error.flatten()
+      );
+    }
 
-    const contest = await prisma.contest.findUnique({
-      where: { id },
-      include: {
-        user: true,
-        participants: { include: { user: true } },
-      },
-    });
+    const { id } = parsed.data.params;
+
+    const contest = await DB.Contest.where({ id })
+      .include("user")
+      .include("participants", (p) => p.include("user"))
+      .first();
 
     if (!contest) {
-      return res.status(404).json({ success: false, message: "Contest not found" });
+      return returnResponse(res, false, StatusCodes.NOT_FOUND, "Contest not found");
     }
 
-    return res.status(200).json({ success: true, data: contest });
+    return returnResponse(res, true, StatusCodes.OK, "Contest fetched", contest);
   } catch (error) {
-    if (error instanceof ZodError) return handleZodError(res, error);
-    console.error(error);
-    return res.status(500).json({ success: false, message: "Failed to fetch contest" });
+    next(error);
   }
 };
 
-export const joinContest = async (req: Request, res: Response) => {
+const joinContest = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { params, body } = joinContestSchema.parse({ params: req.params, body: req.body });
-    const contestId = params.id;
-    const userId = body.userId; // swap for req.user.id once auth middleware is wired up
-
-    const participant = await prisma.contestParticipant.create({
-      data: { contestId, userId },
-    });
-
-    return res.status(201).json({ success: true, data: participant });
-  } catch (error: any) {
-    if (error instanceof ZodError) return handleZodError(res, error);
-    if (error.code === "P2002") {
-      return res.status(409).json({ success: false, message: "Already joined this contest" });
+    const userId = req.user?.userId as string;
+    if (!userId) {
+      return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "User unauthorized");
     }
-    console.error(error);
-    return res.status(500).json({ success: false, message: "Failed to join contest" });
-  }
-};
 
-export const leaveContest = async (req: Request, res: Response) => {
-  try {
-    const { params, body } = leaveContestSchema.parse({ params: req.params, body: req.body });
-    const contestId = params.id;
-    const userId = body.userId; // swap for req.user.id once auth middleware is wired up
-
-    await prisma.contestParticipant.delete({
-      where: { userId_contestId: { userId, contestId } },
-    });
-
-    return res.status(200).json({ success: true, message: "Left contest" });
-  } catch (error: any) {
-    if (error instanceof ZodError) return handleZodError(res, error);
-    if (error.code === "P2025") {
-      return res.status(404).json({ success: false, message: "Not a participant" });
+    const parsed = joinContestSchema.safeParse({ params: req.params });
+    if (!parsed.success) {
+      return returnResponse(
+        res,
+        false,
+        StatusCodes.BAD_REQUEST,
+        "Please provide correct data",
+        parsed.error.flatten()
+      );
     }
-    console.error(error);
-    return res.status(500).json({ success: false, message: "Failed to leave contest" });
-  }
-};
 
-export const deleteContest = async (req: Request, res: Response) => {
-  try {
-    const { params, body } = deleteContestSchema.parse({ params: req.params, body: req.body });
-    const { id } = params;
-    const requesterId = body.userId; // swap for req.user.id once auth middleware is wired up
-    const requesterRole = body.role;  // swap for req.user.role
+    const contestId = parsed.data.params.id;
 
-    const contest = await prisma.contest.findUnique({ where: { id } });
-
+    const contest = await DB.Contest.where({ id: contestId }).first();
     if (!contest) {
-      return res.status(404).json({ success: false, message: "Contest not found" });
+      return returnResponse(res, false, StatusCodes.NOT_FOUND, "Contest not found");
+    }
+
+    try {
+      const participant = await DB.ContestParticipant.create({ contestId, userId });
+      return returnResponse(res, true, StatusCodes.CREATED, "Joined contest successfully", participant);
+    } catch (error) {
+      // Prisma 8 has no P2002: a unique violation surfaces as a DB-driver
+      // error with sqlState "23505" on PostgreSQL (or MongoDB code 11000).
+      if ((error as { sqlState?: string }).sqlState === "23505") {
+        return returnResponse(res, false, StatusCodes.CONFLICT, "Already joined this contest");
+      }
+      throw error;
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
+const leaveContest = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user?.userId as string;
+    if (!userId) {
+      return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "User unauthorized");
+    }
+
+    const parsed = leaveContestSchema.safeParse({ params: req.params });
+    if (!parsed.success) {
+      return returnResponse(
+        res,
+        false,
+        StatusCodes.BAD_REQUEST,
+        "Please provide correct data",
+        parsed.error.flatten()
+      );
+    }
+
+    const contestId = parsed.data.params.id;
+
+    // Prisma 8: .delete() returns the deleted record, or null if nothing
+    // matched — it no longer throws P2025. Check the return value instead
+    // of catching an error code.
+    const deleted = await DB.ContestParticipant.where({ contestId, userId }).delete();
+
+    if (!deleted) {
+      return returnResponse(res, false, StatusCodes.NOT_FOUND, "Not a participant");
+    }
+
+    return returnResponse(res, true, StatusCodes.OK, "Left contest");
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteContest = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const requesterId = req.user?.userId as string;
+
+    const requesterRole = req.user?.role;
+
+    if (!requesterId) {
+      return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "User unauthorized");
+    }
+
+    const parsed = deleteContestSchema.safeParse({ params: req.params });
+    if (!parsed.success) {
+      return returnResponse(
+        res,
+        false,
+        StatusCodes.BAD_REQUEST,
+        "Please provide correct data",
+        parsed.error.flatten()
+      );
+    }
+
+    const { id } = parsed.data.params;
+
+    const contest = await DB.Contest.where({ id }).first();
+    if (!contest) {
+      return returnResponse(res, false, StatusCodes.NOT_FOUND, "Contest not found");
     }
 
     if (contest.userId !== requesterId && requesterRole !== "ADMIN") {
-      return res.status(403).json({ success: false, message: "Not authorized" });
+      return returnResponse(res, false, StatusCodes.FORBIDDEN, "Not authorized");
     }
 
-    await prisma.contest.delete({ where: { id } });
+    await DB.Contest.where({ id }).delete();
 
-    return res.status(200).json({ success: true, message: "Contest deleted" });
+    return returnResponse(res, true, StatusCodes.OK, "Contest deleted");
   } catch (error) {
-    if (error instanceof ZodError) return handleZodError(res, error);
-    console.error(error);
-    return res.status(500).json({ success: false, message: "Failed to delete contest" });
+    next(error);
   }
+};
+
+export const contestController = {
+  createContest,
+  getContests,
+  getContestById,
+  joinContest,
+  leaveContest,
+  deleteContest,
 };
