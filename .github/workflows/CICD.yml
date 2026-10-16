@@ -5,6 +5,15 @@ on:
     branches: [main, dev]
   push:
     branches: [main, dev]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  deployments: write
 
 jobs:
   ci:
@@ -23,10 +32,10 @@ jobs:
       - name: Install
         run: npm ci
 
+      # Disabled: the --if- flag below was truncated (now fixed) — uncomment once ready
       # - name: Lint
-      #   run: npm run lint --if-
-      # # FIX LINT ISSUE
-      # - name: Lint FIX
+      #   run: npm run lint --if-present
+      # - name: Lint fix
       #   run: npm run lint:fix
 
       - name: Test
@@ -35,4 +44,14 @@ jobs:
       - name: Build
         run: npm run build --if-present
 
-        
+  cd:
+    needs: ci
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: production
+    steps:
+      - name: Trigger Render deploy
+        run: curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL"
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}

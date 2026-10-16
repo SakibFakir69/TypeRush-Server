@@ -12,7 +12,9 @@ import { notFound } from "./middleware/not-found.js";
 import { globalError } from "./middleware/error-handler.js";
 import { userRouter } from "./modules/users/user.route.js";
 import { authRouter } from "./modules/auth/auth.route.js";
-
+import { practiceRoutes } from "./modules/practice/practice.route.js";
+import cookieParser from "cookie-parser";
+import { contestRouter } from "./modules/contest/contest.route.js";
 
 const app = express();
 
@@ -20,18 +22,24 @@ const app = express();
 
 // EXTRACT JSON
 app.use(express.json());
+// COOKIE PARSER
+app.use(cookieParser());
 
 // CORS CONFIG
-app.use(cors(
-    {
-        origin: "*"
-    }
-))
+app.use(
+  cors({
+    origin: ["http://localhost:3000" , "*"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    credentials: true,
+  })
+);
 
 
 // API 
 app.use('/api/v1/users', userRouter);
 app.use('/api/v1/auth', authRouter);
+app.use('/api/v1/practices', practiceRoutes)
+app.use('/api/v1/contests', contestRouter)
 
 app.get('/', (res: Response, req: Request) => {
 

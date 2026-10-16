@@ -6,7 +6,8 @@ import { returnResponse } from "../../helpers/return-response.js";
 export interface AuthPayload {
     userId: string;
     email: string,
-    name: string
+    name: string,
+    role: string
 
 }
 
@@ -23,7 +24,7 @@ export const verifyToken = (req: Request, res: Response, next: NextFunction) => 
     
     const headerToken = req.headers.authorization?.replace("Bearer ", "");
     const token = cookieToken ?? headerToken;
-    
+    console.log(token ,  cookieToken, headerToken , " [ TOKEN ] ")
 
     if (!token) {
         return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "Unauthorized user");

@@ -13,6 +13,7 @@ export const userSchema = z.object({
   country: z.string().min(1),
   avatarUrl: z.string().url().optional(),
   bio: z.string().max(500).optional(),
+  role:z.enum(["ORG","USER"]),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
@@ -20,6 +21,7 @@ export const userSchema = z.object({
 
 export const createUserSchema = userSchema.omit({
   id: true,
+
   createdAt: true,
   updatedAt: true,
 });

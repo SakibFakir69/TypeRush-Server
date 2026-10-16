@@ -5,10 +5,9 @@ import { verifyToken } from "../../middleware/jwt-token.js";
 
 const router = Router();
 
-router.get('/',verifyToken, userController.getMe)
+router.get('/', verifyToken, userController.getMe);
 router.post('/', userController.createUser);
-router.put('/', userController.updateUser)
-router.delete('/', userController.deleteUser);
-
+router.put('/', verifyToken, userController.updateUser);
+router.delete('/', verifyToken, userController.deleteUser);
 
 export const userRouter  = router;

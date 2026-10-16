@@ -1,0 +1,446 @@
+[
+  {
+    "id": "table.contest",
+    "label": "Create table \"contest\"",
+    "summary": "Creates table \"contest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "contest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"contest\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"contest\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"contest\"",
+        "sql": "CREATE TABLE \"public\".\"contest\" (\n  \"condition\" text DEFAULT 'UPCOMING' NOT NULL,\n  \"content\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"name\" text NOT NULL,\n  \"time\" float8 NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  \"userId\" text,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"contest_condition_check_2acdb471\" CHECK (\"condition\" IN ('RUNNING', 'FINISHED', 'UPCOMING'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"contest\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"contest\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.contestParticipant",
+    "label": "Create table \"contestParticipant\"",
+    "summary": "Creates table \"contestParticipant\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "contestParticipant"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"contestParticipant\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"contestParticipant\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"contestParticipant\"",
+        "sql": "CREATE TABLE \"public\".\"contestParticipant\" (\n  \"contestId\" text NOT NULL,\n  \"joinedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"userId\" text NOT NULL,\n  PRIMARY KEY (\"userId\", \"contestId\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"contestParticipant\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"contestParticipant\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.user.role",
+    "label": "Add column \"role\" to \"user\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "role",
+        "table": "user"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"role\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "role"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"role\"",
+        "sql": "ALTER TABLE \"public\".\"user\" ADD COLUMN \"role\" text DEFAULT 'USER' NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"role\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "role"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.user.user_role_check_7d146180",
+    "label": "Add check constraint \"user_role_check_7d146180\" on \"user\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "user_role_check_7d146180",
+        "table": "user"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"user_role_check_7d146180\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "user_role_check_7d146180",
+          "public",
+          "\"public\".\"user\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"user_role_check_7d146180\"",
+        "sql": "ALTER TABLE \"public\".\"user\" ADD CONSTRAINT \"user_role_check_7d146180\" CHECK (\"role\" IN ('ADMIN', 'USER', 'ORG'))"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"user_role_check_7d146180\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "user_role_check_7d146180",
+          "public",
+          "\"public\".\"user\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.contest.contest_userId_idx_a489d58a",
+    "label": "Create index \"contest_userId_idx_a489d58a\" on \"contest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "contest_userId_idx_a489d58a",
+        "table": "contest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"contest_userId_idx_a489d58a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"contest_userId_idx_a489d58a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"contest_userId_idx_a489d58a\"",
+        "sql": "CREATE INDEX \"contest_userId_idx_a489d58a\" ON \"public\".\"contest\" (\"userId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"contest_userId_idx_a489d58a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"contest_userId_idx_a489d58a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.contestParticipant.contestParticipant_contestId_idx_8a30d986",
+    "label": "Create index \"contestParticipant_contestId_idx_8a30d986\" on \"contestParticipant\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "contestParticipant_contestId_idx_8a30d986",
+        "table": "contestParticipant"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"contestParticipant_contestId_idx_8a30d986\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"contestParticipant_contestId_idx_8a30d986\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"contestParticipant_contestId_idx_8a30d986\"",
+        "sql": "CREATE INDEX \"contestParticipant_contestId_idx_8a30d986\" ON \"public\".\"contestParticipant\" (\"contestId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"contestParticipant_contestId_idx_8a30d986\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"contestParticipant_contestId_idx_8a30d986\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.contestParticipant.contestParticipant_userId_contestId_idx_0208880e",
+    "label": "Create index \"contestParticipant_userId_contestId_idx_0208880e\" on \"contestParticipant\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "contestParticipant_userId_contestId_idx_0208880e",
+        "table": "contestParticipant"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"contestParticipant_userId_contestId_idx_0208880e\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"contestParticipant_userId_contestId_idx_0208880e\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"contestParticipant_userId_contestId_idx_0208880e\"",
+        "sql": "CREATE INDEX \"contestParticipant_userId_contestId_idx_0208880e\" ON \"public\".\"contestParticipant\" (\"userId\", \"contestId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"contestParticipant_userId_contestId_idx_0208880e\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"contestParticipant_userId_contestId_idx_0208880e\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.contestParticipant.contestParticipant_userId_idx_a489d58a",
+    "label": "Create index \"contestParticipant_userId_idx_a489d58a\" on \"contestParticipant\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "contestParticipant_userId_idx_a489d58a",
+        "table": "contestParticipant"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"contestParticipant_userId_idx_a489d58a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"contestParticipant_userId_idx_a489d58a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"contestParticipant_userId_idx_a489d58a\"",
+        "sql": "CREATE INDEX \"contestParticipant_userId_idx_a489d58a\" ON \"public\".\"contestParticipant\" (\"userId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"contestParticipant_userId_idx_a489d58a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"contestParticipant_userId_idx_a489d58a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.contest.contest_userId_fkey",
+    "label": "Add foreign key \"contest_userId_fkey\" on \"contest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "contest_userId_fkey",
+        "table": "contest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"contest_userId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "contest_userId_fkey",
+          "public",
+          "\"public\".\"contest\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"contest_userId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"contest\"\nADD CONSTRAINT \"contest_userId_fkey\"\nFOREIGN KEY (\"userId\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"contest_userId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "contest_userId_fkey",
+          "public",
+          "\"public\".\"contest\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.contestParticipant.contestParticipant_userId_fkey",
+    "label": "Add foreign key \"contestParticipant_userId_fkey\" on \"contestParticipant\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "contestParticipant_userId_fkey",
+        "table": "contestParticipant"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"contestParticipant_userId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "contestParticipant_userId_fkey",
+          "public",
+          "\"public\".\"contestParticipant\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"contestParticipant_userId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"contestParticipant\"\nADD CONSTRAINT \"contestParticipant_userId_fkey\"\nFOREIGN KEY (\"userId\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"contestParticipant_userId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "contestParticipant_userId_fkey",
+          "public",
+          "\"public\".\"contestParticipant\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.contestParticipant.contestParticipant_contestId_fkey",
+    "label": "Add foreign key \"contestParticipant_contestId_fkey\" on \"contestParticipant\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "contestParticipant_contestId_fkey",
+        "table": "contestParticipant"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"contestParticipant_contestId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "contestParticipant_contestId_fkey",
+          "public",
+          "\"public\".\"contestParticipant\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"contestParticipant_contestId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"contestParticipant\"\nADD CONSTRAINT \"contestParticipant_contestId_fkey\"\nFOREIGN KEY (\"contestId\")\nREFERENCES \"public\".\"contest\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"contestParticipant_contestId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "contestParticipant_contestId_fkey",
+          "public",
+          "\"public\".\"contestParticipant\""
+        ]
+      }
+    ]
+  }
+]

@@ -34,9 +34,9 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'13050c9e3a341dd940ebe0b31cb99b2b21571944f6aa1a209fb43bd00885190a'>;
+  StorageHashBase<'4efdb783719d547b27575e3327bd2aacd099ab2c8ee6fe621e55f219f7eb6ed3'>;
 export type ExecutionHash =
-  ExecutionHashBase<'f858c58d1e877ce75ae011e7eedd03be64abbbd1dd9c48de01b4fa9b2a1efdeb'>;
+  ExecutionHashBase<'32747932e35e7b2cc457d6f7a2f2ed5c409c3c4d2eee399962ffb941319a93cc'>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
 
@@ -242,6 +242,21 @@ type DefaultLiteralValue<CodecId extends string, Encoded> = CodecId extends keyo
 
 export type FieldOutputTypes = {
   readonly public: {
+    readonly Contest: {
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly name: CodecTypes['pg/text@1']['output'];
+      readonly content: CodecTypes['pg/text@1']['output'];
+      readonly time: CodecTypes['pg/float8@1']['output'];
+      readonly condition: 'RUNNING' | 'FINISHED' | 'UPCOMING';
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly userId: CodecTypes['pg/text@1']['output'] | null;
+    };
+    readonly ContestParticipant: {
+      readonly userId: CodecTypes['pg/text@1']['output'];
+      readonly contestId: CodecTypes['pg/text@1']['output'];
+      readonly joinedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    };
     readonly Paragraph: {
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly content: CodecTypes['pg/text@1']['output'];
@@ -273,6 +288,7 @@ export type FieldOutputTypes = {
       readonly emailVerified: CodecTypes['pg/bool@1']['output'];
       readonly avatarUrl: CodecTypes['pg/text@1']['output'] | null;
       readonly bio: CodecTypes['pg/text@1']['output'] | null;
+      readonly role: 'ADMIN' | 'USER' | 'ORG';
       readonly isDelete: CodecTypes['pg/bool@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
@@ -281,6 +297,21 @@ export type FieldOutputTypes = {
 };
 export type FieldInputTypes = {
   readonly public: {
+    readonly Contest: {
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly name: CodecTypes['pg/text@1']['input'];
+      readonly content: CodecTypes['pg/text@1']['input'];
+      readonly time: CodecTypes['pg/float8@1']['input'];
+      readonly condition: 'RUNNING' | 'FINISHED' | 'UPCOMING';
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly userId: CodecTypes['pg/text@1']['input'] | null;
+    };
+    readonly ContestParticipant: {
+      readonly userId: CodecTypes['pg/text@1']['input'];
+      readonly contestId: CodecTypes['pg/text@1']['input'];
+      readonly joinedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+    };
     readonly Paragraph: {
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly content: CodecTypes['pg/text@1']['input'];
@@ -312,6 +343,7 @@ export type FieldInputTypes = {
       readonly emailVerified: CodecTypes['pg/bool@1']['input'];
       readonly avatarUrl: CodecTypes['pg/text@1']['input'] | null;
       readonly bio: CodecTypes['pg/text@1']['input'] | null;
+      readonly role: 'ADMIN' | 'USER' | 'ORG';
       readonly isDelete: CodecTypes['pg/bool@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
@@ -320,6 +352,21 @@ export type FieldInputTypes = {
 };
 export type StorageColumnTypes = {
   readonly public: {
+    readonly contest: {
+      readonly condition: 'RUNNING' | 'FINISHED' | 'UPCOMING';
+      readonly content: CodecTypes['pg/text@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly name: CodecTypes['pg/text@1']['output'];
+      readonly time: CodecTypes['pg/float8@1']['output'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly userId: CodecTypes['pg/text@1']['output'] | null;
+    };
+    readonly contestParticipant: {
+      readonly contestId: CodecTypes['pg/text@1']['output'];
+      readonly joinedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly userId: CodecTypes['pg/text@1']['output'];
+    };
     readonly paragraph: {
       readonly category: CodecTypes['pg/text@1']['output'] | null;
       readonly content: CodecTypes['pg/text@1']['output'];
@@ -353,12 +400,28 @@ export type StorageColumnTypes = {
       readonly isDelete: CodecTypes['pg/bool@1']['output'];
       readonly name: CodecTypes['pg/text@1']['output'];
       readonly password: CodecTypes['pg/text@1']['output'] | null;
+      readonly role: 'ADMIN' | 'USER' | 'ORG';
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     };
   };
 };
 export type StorageColumnInputTypes = {
   readonly public: {
+    readonly contest: {
+      readonly condition: 'RUNNING' | 'FINISHED' | 'UPCOMING';
+      readonly content: CodecTypes['pg/text@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly name: CodecTypes['pg/text@1']['input'];
+      readonly time: CodecTypes['pg/float8@1']['input'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly userId: CodecTypes['pg/text@1']['input'] | null;
+    };
+    readonly contestParticipant: {
+      readonly contestId: CodecTypes['pg/text@1']['input'];
+      readonly joinedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly userId: CodecTypes['pg/text@1']['input'];
+    };
     readonly paragraph: {
       readonly category: CodecTypes['pg/text@1']['input'] | null;
       readonly content: CodecTypes['pg/text@1']['input'];
@@ -392,6 +455,7 @@ export type StorageColumnInputTypes = {
       readonly isDelete: CodecTypes['pg/bool@1']['input'];
       readonly name: CodecTypes['pg/text@1']['input'];
       readonly password: CodecTypes['pg/text@1']['input'] | null;
+      readonly role: 'ADMIN' | 'USER' | 'ORG';
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
     };
   };
@@ -411,11 +475,14 @@ export namespace Models {
     emailVerified: CodecTypes['pg/bool@1']['output'];
     avatarUrl: CodecTypes['pg/text@1']['output'] | null;
     bio: CodecTypes['pg/text@1']['output'] | null;
+    role: 'ADMIN' | 'USER' | 'ORG';
     isDelete: CodecTypes['pg/bool@1']['output'];
     createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    contest: public_Contest[];
+    participation: public_ContestParticipant[];
     results: public_Result[];
-    readonly [RelationKeys]?: 'results';
+    readonly [RelationKeys]?: 'contest' | 'participation' | 'results';
   };
   export type public_Result = {
     id: CodecTypes['pg/text@1']['output'];
@@ -440,6 +507,27 @@ export namespace Models {
     results: public_Result[];
     readonly [RelationKeys]?: 'results';
   };
+  export type public_Contest = {
+    id: CodecTypes['pg/text@1']['output'];
+    name: CodecTypes['pg/text@1']['output'];
+    content: CodecTypes['pg/text@1']['output'];
+    time: CodecTypes['pg/float8@1']['output'];
+    condition: 'RUNNING' | 'FINISHED' | 'UPCOMING';
+    createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    userId: CodecTypes['pg/text@1']['output'] | null;
+    participants: public_ContestParticipant[];
+    user: public_User | null;
+    readonly [RelationKeys]?: 'participants' | 'user';
+  };
+  export type public_ContestParticipant = {
+    userId: CodecTypes['pg/text@1']['output'];
+    contestId: CodecTypes['pg/text@1']['output'];
+    joinedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    contest: public_Contest;
+    user: public_User;
+    readonly [RelationKeys]?: 'contest' | 'user';
+  };
 }
 
 export declare const models: {
@@ -447,6 +535,8 @@ export declare const models: {
     User: Models.public_User;
     Result: Models.public_Result;
     Paragraph: Models.public_Paragraph;
+    Contest: Models.public_Contest;
+    ContestParticipant: Models.public_ContestParticipant;
   };
 };
 
@@ -468,6 +558,147 @@ type ContractBase = Omit<
         readonly kind: 'postgres-schema';
         readonly entries: {
           readonly table: {
+            readonly contest: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly name: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly content: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly time: {
+                  readonly nativeType: 'float8';
+                  readonly codecId: 'pg/float8@1';
+                  readonly nullable: false;
+                };
+                readonly condition: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/text@1', 'UPCOMING'>;
+                  };
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+                readonly updatedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                };
+                readonly userId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [];
+              indexes: readonly [
+                {
+                  readonly name: 'contest_userId_idx_a489d58a';
+                  readonly prefix: 'contest_userId_idx';
+                  readonly columns: readonly ['userId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'contest';
+                    readonly columns: readonly ['userId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
+            readonly contestParticipant: {
+              columns: {
+                readonly userId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly contestId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly joinedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+              };
+              primaryKey: { readonly columns: readonly ['userId', 'contestId'] };
+              uniques: readonly [];
+              indexes: readonly [
+                {
+                  readonly name: 'contestParticipant_userId_contestId_idx_0208880e';
+                  readonly prefix: 'contestParticipant_userId_contestId_idx';
+                  readonly columns: readonly ['userId', 'contestId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'contestParticipant_userId_idx_a489d58a';
+                  readonly prefix: 'contestParticipant_userId_idx';
+                  readonly columns: readonly ['userId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'contestParticipant_contestId_idx_8a30d986';
+                  readonly prefix: 'contestParticipant_contestId_idx';
+                  readonly columns: readonly ['contestId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'contestParticipant';
+                    readonly columns: readonly ['userId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'contestParticipant';
+                    readonly columns: readonly ['contestId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'contest';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
             readonly paragraph: {
               columns: {
                 readonly id: {
@@ -664,6 +895,15 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/text@1';
                   readonly nullable: true;
                 };
+                readonly role: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/text@1', 'USER'>;
+                  };
+                };
                 readonly isDelete: {
                   readonly nativeType: 'bool';
                   readonly codecId: 'pg/bool@1';
@@ -694,6 +934,16 @@ type ContractBase = Omit<
               foreignKeys: readonly [];
             };
           };
+          readonly valueSet: {
+            readonly ConditionContest: {
+              readonly kind: 'valueSet';
+              readonly values: readonly ['RUNNING', 'FINISHED', 'UPCOMING'];
+            };
+            readonly UserRole: {
+              readonly kind: 'valueSet';
+              readonly values: readonly ['ADMIN', 'USER', 'ORG'];
+            };
+          };
         };
       };
     };
@@ -707,11 +957,145 @@ type ContractBase = Omit<
     readonly user: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
     readonly result: { readonly namespace: 'public' & NamespaceId; readonly model: 'Result' };
     readonly paragraph: { readonly namespace: 'public' & NamespaceId; readonly model: 'Paragraph' };
+    readonly contest: { readonly namespace: 'public' & NamespaceId; readonly model: 'Contest' };
+    readonly contestParticipant: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'ContestParticipant';
+    };
   };
   readonly domain: {
     readonly namespaces: {
       readonly public: {
         readonly models: {
+          readonly Contest: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly name: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly content: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly time: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/float8@1' };
+              };
+              readonly condition: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+              readonly updatedAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+              readonly userId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+            };
+            readonly relations: {
+              readonly participants: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'ContestParticipant';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['contestId'];
+                };
+              };
+              readonly user: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['userId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'contest';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly name: { readonly column: 'name' };
+                readonly content: { readonly column: 'content' };
+                readonly time: { readonly column: 'time' };
+                readonly condition: { readonly column: 'condition' };
+                readonly createdAt: { readonly column: 'createdAt' };
+                readonly updatedAt: { readonly column: 'updatedAt' };
+                readonly userId: { readonly column: 'userId' };
+              };
+            };
+          };
+          readonly ContestParticipant: {
+            readonly fields: {
+              readonly userId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly contestId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly joinedAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+            };
+            readonly relations: {
+              readonly contest: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Contest';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['contestId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly user: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['userId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'contestParticipant';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly userId: { readonly column: 'userId' };
+                readonly contestId: { readonly column: 'contestId' };
+                readonly joinedAt: { readonly column: 'joinedAt' };
+              };
+            };
+          };
           readonly Paragraph: {
             readonly fields: {
               readonly id: {
@@ -894,6 +1278,10 @@ type ContractBase = Omit<
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
+              readonly role: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
               readonly isDelete: {
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
@@ -914,6 +1302,28 @@ type ContractBase = Omit<
               };
             };
             readonly relations: {
+              readonly contest: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Contest';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['userId'];
+                };
+              };
+              readonly participation: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'ContestParticipant';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['userId'];
+                };
+              };
               readonly results: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -942,11 +1352,30 @@ type ContractBase = Omit<
                 readonly emailVerified: { readonly column: 'emailVerified' };
                 readonly avatarUrl: { readonly column: 'avatarUrl' };
                 readonly bio: { readonly column: 'bio' };
+                readonly role: { readonly column: 'role' };
                 readonly isDelete: { readonly column: 'isDelete' };
                 readonly createdAt: { readonly column: 'createdAt' };
                 readonly updatedAt: { readonly column: 'updatedAt' };
               };
             };
+          };
+        };
+        readonly enum: {
+          readonly UserRole: {
+            readonly codecId: 'pg/text@1';
+            readonly members: readonly [
+              { readonly name: 'ADMIN'; readonly value: 'ADMIN' },
+              { readonly name: 'USER'; readonly value: 'USER' },
+              { readonly name: 'ORG'; readonly value: 'ORG' },
+            ];
+          };
+          readonly ConditionContest: {
+            readonly codecId: 'pg/text@1';
+            readonly members: readonly [
+              { readonly name: 'RUNNING'; readonly value: 'RUNNING' },
+              { readonly name: 'FINISHED'; readonly value: 'FINISHED' },
+              { readonly name: 'UPCOMING'; readonly value: 'UPCOMING' },
+            ];
           };
         };
       };
@@ -975,6 +1404,23 @@ type ContractBase = Omit<
     readonly executionHash: ExecutionHash;
     readonly mutations: {
       readonly defaults: readonly [
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'contest';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv4' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'contest';
+            readonly column: 'updatedAt';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'instantNow' };
+          readonly onUpdate: { readonly kind: 'generator'; readonly id: 'instantNow' };
+        },
         {
           readonly ref: {
             readonly namespace: 'public';
