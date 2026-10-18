@@ -15,6 +15,8 @@ import { authRouter } from "./modules/auth/auth.route.js";
 import { practiceRoutes } from "./modules/practice/practice.route.js";
 import cookieParser from "cookie-parser";
 import { contestRouter } from "./modules/contest/contest.route.js";
+import { adminRouter } from "./modules/admin/admin.route.js";
+import { announcementRouter } from "./modules/announcements/announcements.route.js";
 
 const app = express();
 
@@ -40,6 +42,8 @@ app.use('/api/v1/users', userRouter);
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/practices', practiceRoutes)
 app.use('/api/v1/contests', contestRouter)
+app.use('/api/v1/admin', adminRouter)
+app.use('/api/v1/announcements', announcementRouter)
 
 app.get('/', (res: Response, req: Request) => {
 

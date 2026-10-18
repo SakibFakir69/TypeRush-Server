@@ -4,6 +4,7 @@ enum UserRole {
   USER
   ORG
 }
+
 enum ConditionContest {
   RUNNING
   FINISHED
@@ -30,6 +31,7 @@ model User {
   results       Result[]
   contest       Contest[]
   participation ContestParticipant[]
+  announcement  Announcement[]
 }
 
 model Result {
@@ -66,7 +68,7 @@ model Contest {
   name         String
   content      String
   time         Float
-  condition    ConditionContest @default(UPCOMING)
+  condition    ConditionContest     @default(UPCOMING)
   createdAt    DateTime             @default(now())
   updatedAt    temporal.updatedAt()
 
@@ -86,4 +88,14 @@ model ContestParticipant {
 
   @@id([userId, contestId])
   @@index([userId, contestId])
+}
+
+model Announcement {
+  id        String   @id @default(uuid())
+  message   String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+   updatedAt    temporal.updatedAt()
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 }

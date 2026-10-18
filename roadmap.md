@@ -1,7 +1,8 @@
 
 
-1. start testing api 
 
+2. work on announcements 
+3. test all api
 
 getRandomParagraph(req, res)
 getParagraphById(req, res)

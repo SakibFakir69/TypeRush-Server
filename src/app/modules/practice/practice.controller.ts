@@ -227,8 +227,60 @@ const practiceLeaderboard = async (req: Request, res: Response, next: NextFuncti
 
 
 
+const deletePracticeContent = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id: paragraphId } = req.params as { id: string };
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      return returnResponse(
+        res,
+        false,
+        StatusCodes.UNAUTHORIZED,
+        "User not authenticated"
+      );
+    }
+
+    if (!paragraphId) {
+      return returnResponse(
+        res,
+        false,
+        StatusCodes.BAD_REQUEST,
+        "Paragraph ID is required"
+      );
+    }
+
+    const deleted = await PracticeServices.deletePracticeContent(
+      paragraphId
+    );
+
+    if (!deleted) {
+      return returnResponse(
+        res,
+        false,
+        StatusCodes.NOT_FOUND,
+        "Practice content not found"
+      );
+    }
+
+    return returnResponse(
+      res,
+      true,
+      StatusCodes.OK,
+      "Practice content deleted successfully",
+      deleted
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
 
 export const practiceController = {
-  practiceAllTopic, addPracticeContent, getPracticeParagraph, submitPracticeResult, practiceLeaderboard
+  practiceAllTopic, addPracticeContent, getPracticeParagraph, submitPracticeResult, practiceLeaderboard,deletePracticeContent
 
 }
