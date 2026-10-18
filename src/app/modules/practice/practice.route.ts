@@ -1,16 +1,16 @@
 // src/app/modules/practice/practice.route.ts
 import { Router } from "express";
 import { practiceController } from "./practice.controller.js";
+import { verifyToken } from "../../middleware/jwt-token.js";
+import { verifyRole } from "../../middleware/verify-role.js";
 
 const router = Router();
 
-
 router.get("/topics", practiceController.practiceAllTopic);
-router.get("/paragraph", practiceController.getPracticeParagraph);
-router.post("/result", practiceController.submitPracticeResult);
-router.get("/leaderboard", practiceController.practiceLeaderboard);
+router.get("/results", practiceController.practiceLeaderboard);
 
-// ADMIN 
-router.post("/admin/content", practiceController.addPracticeContent);
+router.post("/results",verifyToken, practiceController.submitPracticeResult);
+
+
 
 export const practiceRoutes = router;

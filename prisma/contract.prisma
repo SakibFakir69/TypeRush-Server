@@ -1,37 +1,52 @@
 // use prisma-8
+enum UserRole {
+  ADMIN
+  USER
+  ORG
+}
+
+enum ConditionContest {
+  RUNNING
+  FINISHED
+  UPCOMING
+}
 
 model User {
-  id            String   @id @default(uuid())
+  id            String               @id @default(uuid())
   name          String
   fullName      String
   age           Int?
-  email         String   @unique
+  email         String               @unique
   password      String?
   country       String?
-  googleId      String?  @unique
-  authProvider  String   @default("local")
-  emailVerified Boolean  @default(false)
+  googleId      String?              @unique
+  authProvider  String               @default("local")
+  emailVerified Boolean              @default(false)
   avatarUrl     String?
   bio           String?
-  isDelete      Boolean  @default(false)
-  createdAt     DateTime @default(now())
+  role          UserRole             @default(USER)
+  isDelete      Boolean              @default(false)
+  createdAt     DateTime             @default(now())
   updatedAt     temporal.updatedAt()
   results       Result[]
+  contest       Contest[]
+  participation ContestParticipant[]
+  announcement  Announcement[]
 }
 
 model Result {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   paragraphId String
-  paragraph   Paragraph @relation(fields: [paragraphId], references: [id])
+  paragraph   Paragraph @relation(fields:[paragraphId], references:[id])
 
   userId      String?
-  user        User?    @relation(fields: [userId], references: [id])
+  user        User?     @relation(fields:[userId], references:[id])
 
   wpm         Float
   accuracy    Float
   errors      Int
   timeTaken   Int
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   @@index([userId])
   @@index([paragraphId])
@@ -45,4 +60,42 @@ model Paragraph {
   wordCount  Int
   createdAt  DateTime @default(now())
   results    Result[]
+}
+
+// CONTEST
+model Contest {
+  id           String               @id @default(uuid())
+  name         String
+  content      String
+  time         Float
+  condition    ConditionContest     @default(UPCOMING)
+  createdAt    DateTime             @default(now())
+  updatedAt    temporal.updatedAt()
+
+  userId       String?
+  user         User?                @relation(fields:[userId], references:[id])
+
+  participants ContestParticipant[]
+}
+
+model ContestParticipant {
+  userId    String
+  contestId String
+  joinedAt  DateTime @default(now())
+
+  user      User     @relation(fields:[userId], references:[id])
+  contest   Contest  @relation(fields:[contestId], references:[id])
+
+  @@id([userId, contestId])
+  @@index([userId, contestId])
+}
+
+model Announcement {
+  id        String   @id @default(uuid())
+  message   String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+   updatedAt    temporal.updatedAt()
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 }
