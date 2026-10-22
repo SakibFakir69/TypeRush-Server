@@ -179,6 +179,13 @@
                   "kind": "scalar"
                 }
               },
+              "contestDate": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
               "createdAt": {
                 "nullable": false,
                 "type": {
@@ -262,6 +269,9 @@
                 },
                 "content": {
                   "column": "content"
+                },
+                "contestDate": {
+                  "column": "contestDate"
                 },
                 "createdAt": {
                   "column": "createdAt"
@@ -397,6 +407,20 @@
                   "kind": "scalar"
                 }
               },
+              "isDeleted": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "language": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "wordCount": {
                 "nullable": false,
                 "type": {
@@ -438,6 +462,12 @@
                 },
                 "id": {
                   "column": "id"
+                },
+                "isDeleted": {
+                  "column": "isDeleted"
+                },
+                "language": {
+                  "column": "language"
                 },
                 "wordCount": {
                   "column": "wordCount"
@@ -924,6 +954,15 @@
                   "nativeType": "text",
                   "nullable": false
                 },
+                "contestDate": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
                 "createdAt": {
                   "codecId": "pg/timestamptz-temporal@1",
                   "default": {
@@ -1115,6 +1154,24 @@
                   "codecId": "pg/text@1",
                   "nativeType": "text",
                   "nullable": false
+                },
+                "isDeleted": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": false
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "language": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "en"
+                  },
+                  "nativeType": "text",
+                  "nullable": true
                 },
                 "wordCount": {
                   "codecId": "pg/int4@1",
@@ -1397,7 +1454,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "954df7fbf3120a09fd9303032700418c7b8e0761e487b8b87d8484a24382a4c5"
+    "storageHash": "cd8efc4988746130ae8688e2af165da01d27502c09ad5a4d06eebf39bce548d5"
   },
   "execution": {
     "executionHash": "1164c3af0f71d30425d18f4618421786d8aa185777483e53086adc7a0a6e7574",

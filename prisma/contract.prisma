@@ -55,10 +55,13 @@ model Result {
 model Paragraph {
   id         String   @id @default(uuid())
   content    String
+  language   String?   @default("en") 
   category   String?
   difficulty String?
   wordCount  Int
+  isDeleted  Boolean  @default(false)
   createdAt  DateTime @default(now())
+
   results    Result[]
 }
 
@@ -68,16 +71,17 @@ model Contest {
   name         String
   content      String
   time         Float
+  contestDate  DateTime             @default(now())
   condition    ConditionContest     @default(UPCOMING)
   createdAt    DateTime             @default(now())
   updatedAt    temporal.updatedAt()
-
   userId       String?
   user         User?                @relation(fields:[userId], references:[id])
-
   participants ContestParticipant[]
-}
+  
 
+}
+// after contest time over no one can particapant
 model ContestParticipant {
   userId    String
   contestId String

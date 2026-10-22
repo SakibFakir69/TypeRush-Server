@@ -34,7 +34,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'954df7fbf3120a09fd9303032700418c7b8e0761e487b8b87d8484a24382a4c5'>;
+  StorageHashBase<'cd8efc4988746130ae8688e2af165da01d27502c09ad5a4d06eebf39bce548d5'>;
 export type ExecutionHash =
   ExecutionHashBase<'1164c3af0f71d30425d18f4618421786d8aa185777483e53086adc7a0a6e7574'>;
 export type ProfileHash =
@@ -255,6 +255,7 @@ export type FieldOutputTypes = {
       readonly name: CodecTypes['pg/text@1']['output'];
       readonly content: CodecTypes['pg/text@1']['output'];
       readonly time: CodecTypes['pg/float8@1']['output'];
+      readonly contestDate: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly condition: 'RUNNING' | 'FINISHED' | 'UPCOMING';
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
@@ -268,9 +269,11 @@ export type FieldOutputTypes = {
     readonly Paragraph: {
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly content: CodecTypes['pg/text@1']['output'];
+      readonly language: CodecTypes['pg/text@1']['output'] | null;
       readonly category: CodecTypes['pg/text@1']['output'] | null;
       readonly difficulty: CodecTypes['pg/text@1']['output'] | null;
       readonly wordCount: CodecTypes['pg/int4@1']['output'];
+      readonly isDeleted: CodecTypes['pg/bool@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     };
     readonly Result: {
@@ -318,6 +321,7 @@ export type FieldInputTypes = {
       readonly name: CodecTypes['pg/text@1']['input'];
       readonly content: CodecTypes['pg/text@1']['input'];
       readonly time: CodecTypes['pg/float8@1']['input'];
+      readonly contestDate: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly condition: 'RUNNING' | 'FINISHED' | 'UPCOMING';
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
@@ -331,9 +335,11 @@ export type FieldInputTypes = {
     readonly Paragraph: {
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly content: CodecTypes['pg/text@1']['input'];
+      readonly language: CodecTypes['pg/text@1']['input'] | null;
       readonly category: CodecTypes['pg/text@1']['input'] | null;
       readonly difficulty: CodecTypes['pg/text@1']['input'] | null;
       readonly wordCount: CodecTypes['pg/int4@1']['input'];
+      readonly isDeleted: CodecTypes['pg/bool@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
     };
     readonly Result: {
@@ -379,6 +385,7 @@ export type StorageColumnTypes = {
     readonly contest: {
       readonly condition: 'RUNNING' | 'FINISHED' | 'UPCOMING';
       readonly content: CodecTypes['pg/text@1']['output'];
+      readonly contestDate: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly name: CodecTypes['pg/text@1']['output'];
@@ -397,6 +404,8 @@ export type StorageColumnTypes = {
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly difficulty: CodecTypes['pg/text@1']['output'] | null;
       readonly id: CodecTypes['pg/text@1']['output'];
+      readonly isDeleted: CodecTypes['pg/bool@1']['output'];
+      readonly language: CodecTypes['pg/text@1']['output'] | null;
       readonly wordCount: CodecTypes['pg/int4@1']['output'];
     };
     readonly result: {
@@ -442,6 +451,7 @@ export type StorageColumnInputTypes = {
     readonly contest: {
       readonly condition: 'RUNNING' | 'FINISHED' | 'UPCOMING';
       readonly content: CodecTypes['pg/text@1']['input'];
+      readonly contestDate: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly name: CodecTypes['pg/text@1']['input'];
@@ -460,6 +470,8 @@ export type StorageColumnInputTypes = {
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly difficulty: CodecTypes['pg/text@1']['input'] | null;
       readonly id: CodecTypes['pg/text@1']['input'];
+      readonly isDeleted: CodecTypes['pg/bool@1']['input'];
+      readonly language: CodecTypes['pg/text@1']['input'] | null;
       readonly wordCount: CodecTypes['pg/int4@1']['input'];
     };
     readonly result: {
@@ -533,9 +545,11 @@ export namespace Models {
   export type public_Paragraph = {
     id: CodecTypes['pg/text@1']['output'];
     content: CodecTypes['pg/text@1']['output'];
+    language: CodecTypes['pg/text@1']['output'] | null;
     category: CodecTypes['pg/text@1']['output'] | null;
     difficulty: CodecTypes['pg/text@1']['output'] | null;
     wordCount: CodecTypes['pg/int4@1']['output'];
+    isDeleted: CodecTypes['pg/bool@1']['output'];
     createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     results: public_Result[];
     readonly [RelationKeys]?: 'results';
@@ -545,6 +559,7 @@ export namespace Models {
     name: CodecTypes['pg/text@1']['output'];
     content: CodecTypes['pg/text@1']['output'];
     time: CodecTypes['pg/float8@1']['output'];
+    contestDate: CodecTypes['pg/timestamptz-temporal@1']['output'];
     condition: 'RUNNING' | 'FINISHED' | 'UPCOMING';
     createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
@@ -687,6 +702,12 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/float8@1';
                   readonly nullable: false;
                 };
+                readonly contestDate: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
                 readonly condition: {
                   readonly nativeType: 'text';
                   readonly codecId: 'pg/text@1';
@@ -818,6 +839,15 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/text@1';
                   readonly nullable: false;
                 };
+                readonly language: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/text@1', 'en'>;
+                  };
+                };
                 readonly category: {
                   readonly nativeType: 'text';
                   readonly codecId: 'pg/text@1';
@@ -832,6 +862,15 @@ type ContractBase = Omit<
                   readonly nativeType: 'int4';
                   readonly codecId: 'pg/int4@1';
                   readonly nullable: false;
+                };
+                readonly isDeleted: {
+                  readonly nativeType: 'bool';
+                  readonly codecId: 'pg/bool@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/bool@1', false>;
+                  };
                 };
                 readonly createdAt: {
                   readonly nativeType: 'timestamptz';
@@ -1153,6 +1192,13 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/float8@1' };
               };
+              readonly contestDate: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
               readonly condition: {
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
@@ -1206,6 +1252,7 @@ type ContractBase = Omit<
                 readonly name: { readonly column: 'name' };
                 readonly content: { readonly column: 'content' };
                 readonly time: { readonly column: 'time' };
+                readonly contestDate: { readonly column: 'contestDate' };
                 readonly condition: { readonly column: 'condition' };
                 readonly createdAt: { readonly column: 'createdAt' };
                 readonly updatedAt: { readonly column: 'updatedAt' };
@@ -1274,6 +1321,10 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
+              readonly language: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
               readonly category: {
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
@@ -1285,6 +1336,10 @@ type ContractBase = Omit<
               readonly wordCount: {
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly isDeleted: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
               };
               readonly createdAt: {
                 readonly nullable: false;
@@ -1313,9 +1368,11 @@ type ContractBase = Omit<
               readonly fields: {
                 readonly id: { readonly column: 'id' };
                 readonly content: { readonly column: 'content' };
+                readonly language: { readonly column: 'language' };
                 readonly category: { readonly column: 'category' };
                 readonly difficulty: { readonly column: 'difficulty' };
                 readonly wordCount: { readonly column: 'wordCount' };
+                readonly isDeleted: { readonly column: 'isDeleted' };
                 readonly createdAt: { readonly column: 'createdAt' };
               };
             };

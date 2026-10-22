@@ -13,11 +13,46 @@ const createData = async (
   });
 };
 
-const getAllAnnouncements = async () => {
-  return DB.Announcement.where({ isActive: true })
-    .orderBy((a) => a.createdAt.desc())
-    .all();
+
+const getAllAnnouncements = async ({
+  page = 1,
+  limit = 10,
+}: {
+  page?: number;
+  limit?: number;
+} = {}) => {
+  const offset = (page - 1) * limit;
+
+  const query = DB.Announcement.where({ isActive: true });
+
+  const [announcements, countResult] = await Promise.all([
+    query
+      .orderBy((a) => a.createdAt.desc())
+      .limit(limit)
+      .offset(offset)
+      .all(),
+
+    query.aggregate((a) => ({
+      total: a.count(),
+    })),
+  ]);
+
+  const total = countResult.total;
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    announcements,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1,
+    },
+  };
 };
+
 
 const updateAnnouncement = async (
   id: string,

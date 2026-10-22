@@ -4,9 +4,7 @@ import 'temporal-polyfill/full/global';
 import express, { type Request, type Response } from "express"
 import cors from "cors";
 import {
-
     StatusCodes,
-
 } from 'http-status-codes';
 import { notFound } from "./middleware/not-found.js";
 import { globalError } from "./middleware/error-handler.js";

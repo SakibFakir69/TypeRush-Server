@@ -31,14 +31,32 @@ const createAnnouncement = async (req: Request, res: Response, next: NextFunctio
   }
 };
 
-const getAnnouncements = async (_req: Request, res: Response, next: NextFunction) => {
+const getAllAnnouncements = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-    const data = await AnnouncementServices.getAllAnnouncements();
-    return returnResponse(res, true, StatusCodes.OK, "Announcements fetched", data);
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 10));
+
+    const data = await AnnouncementServices.getAllAnnouncements({
+      page,
+      limit,
+    });
+
+    return returnResponse(
+      res,
+      true,
+      StatusCodes.OK,
+      "All announcements fetched successfully",
+      data
+    );
   } catch (error) {
     next(error);
   }
 };
+
 
 const updateAnnouncement = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -94,7 +112,7 @@ const deleteAnnouncement = async (req: Request, res: Response, next: NextFunctio
 
 export const announcementController = {
   createAnnouncement,
-  getAnnouncements,
+  getAllAnnouncements,
   updateAnnouncement,
   deleteAnnouncement,
 };

@@ -6,10 +6,10 @@ import { announcementController } from "./announcement.controller.js";
 
 const router = Router();
 
-
-router.post("/announcements", verifyToken, verifyRole("ADMIN"), announcementController.createAnnouncement);
-router.patch("/announcements/:id", verifyToken, verifyRole("ADMIN"), announcementController.updateAnnouncement);
-router.delete("/announcements/:id", verifyToken, verifyRole("ADMIN"), announcementController.deleteAnnouncement);
+router.get("/", verifyToken, verifyRole("ADMIN"), announcementController.getAllAnnouncements)
+router.post("/", verifyToken, verifyRole("ADMIN"), announcementController.createAnnouncement);
+router.patch("/:id", verifyToken, verifyRole("ADMIN"), announcementController.updateAnnouncement);
+router.delete("/:id", verifyToken, verifyRole("ADMIN"), announcementController.deleteAnnouncement);
 
 
 export const announcementRouter = router;

@@ -38,6 +38,10 @@ const getPracticeParagraph = async (paragraphId: string) => {
 
 }
 
+const deletePracticeContent = async (paragraphId: string) => {
+  return DB.Paragraph.where({ id: paragraphId }).update({ isDeleted: true });
+};
+
 const submitPracticeResult = async (
   data: SubmitResultBody,
   userId: string
@@ -62,5 +66,5 @@ const submitPracticeResult = async (
 
 
 export const PracticeServices = {
-    createData, getPracticeParagraph, submitPracticeResult
+    createData, getPracticeParagraph, submitPracticeResult, deletePracticeContent
 }
