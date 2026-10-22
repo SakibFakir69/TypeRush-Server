@@ -44,14 +44,14 @@ jobs:
       - name: Build
         run: npm run build --if-present
 
-  cd:
-    needs: ci
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    environment: production
-    steps:
-      - name: Trigger Render deploy
-        run: curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL"
-        env:
-          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+  # cd:
+  #   needs: ci
+  #   if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 5
+  #   environment: production
+  #   steps:
+  #     - name: Trigger Render deploy
+  #       run: curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL"
+  #       env:
+  #         RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}

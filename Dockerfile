@@ -12,7 +12,7 @@ RUN npm ci
 # ---- Build ----
 FROM deps AS build
 COPY . .
-RUN npx prisma generate
+RUN npx prisma contract emit
 RUN npx tsc -p tsconfig.json
 
 # ---- Production dependencies only ----
