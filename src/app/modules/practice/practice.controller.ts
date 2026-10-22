@@ -55,26 +55,29 @@ const practiceAllTopic = async (req: Request, res: Response, next: NextFunction)
     const take = Math.min(Math.max(Number(limit) || 10, 1), 100);
     const currentPage = Math.max(Number(page) || 1, 1);
     const skip = (currentPage - 1) * take;
-    const sortField = String(orderBy || 'createdAt');
+
+    const allowedSortFields = ['createdAt', 'content', 'difficulty', 'wordCount', 'category'] as const;
+    const sortField = allowedSortFields.includes(orderBy as any)
+      ? (orderBy as typeof allowedSortFields[number])
+      : 'createdAt';
     const sortDir = sortBy === 'asc' ? 'asc' : 'desc';
     const searchValue = typeof search === 'string' ? search.trim() : '';
 
-    let query = DB.Paragraph;
+    const buildQuery = () => {
+      let q = DB.Paragraph.where({ isDeleted: false });
+      if (searchValue) {
+        q = q.where((p) => p.content.ilike(`%${searchValue}%`));
+      }
+      return q;
+    };
 
-    if (searchValue) {
-      query = query.where((p) => p.content.ilike(`%${searchValue}%`));
-    }
-
-    const rowData = await query
+    const rowData = await buildQuery()
       .orderBy((p) => (sortDir === 'asc' ? p[sortField].asc() : p[sortField].desc()))
       .limit(take)
       .offset(skip)
       .all();
 
-    const { total } = await (searchValue
-      ? DB.Paragraph.where((p) => p.content.ilike(`%${searchValue}%`))
-      : DB.Paragraph
-    ).aggregate((a) => ({ total: a.count() }));
+    const { total } = await buildQuery().aggregate((a) => ({ total: a.count() }));
 
     res.status(200).json({
       success: true,
@@ -101,7 +104,7 @@ const getPracticeParagraph = async (req: Request, res: Response, next: NextFunct
     }
     const result = await PracticeServices.getPracticeParagraph(paragraphId);
     if (!result) {
-      return returnResponse(res, true, StatusCodes.NOT_FOUND, "Paragraph data not founded");
+      return returnResponse(res, false, StatusCodes.NOT_FOUND, "Paragraph data not founded");
     }
     return returnResponse(res, true, StatusCodes.OK, "Paragraph data", result);
   } catch (error) {

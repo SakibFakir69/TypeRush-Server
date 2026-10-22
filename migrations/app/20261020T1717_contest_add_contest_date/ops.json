@@ -1,0 +1,164 @@
+[
+  {
+    "id": "table.announcement",
+    "label": "Create table \"announcement\"",
+    "summary": "Creates table \"announcement\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "announcement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"announcement\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"announcement\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"announcement\"",
+        "sql": "CREATE TABLE \"public\".\"announcement\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"isActive\" bool DEFAULT true NOT NULL,\n  \"message\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  \"userId\" text,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"announcement\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"announcement\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.contest.contestDate",
+    "label": "Add column \"contestDate\" to \"contest\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "contestDate",
+        "table": "contest"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"contestDate\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "contest",
+          "contestDate"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"contestDate\"",
+        "sql": "ALTER TABLE \"public\".\"contest\" ADD COLUMN \"contestDate\" timestamptz DEFAULT (now()) NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"contestDate\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "contest",
+          "contestDate"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.announcement.announcement_userId_idx_a489d58a",
+    "label": "Create index \"announcement_userId_idx_a489d58a\" on \"announcement\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "announcement_userId_idx_a489d58a",
+        "table": "announcement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"announcement_userId_idx_a489d58a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"announcement_userId_idx_a489d58a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"announcement_userId_idx_a489d58a\"",
+        "sql": "CREATE INDEX \"announcement_userId_idx_a489d58a\" ON \"public\".\"announcement\" (\"userId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"announcement_userId_idx_a489d58a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"announcement_userId_idx_a489d58a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.announcement.announcement_userId_fkey",
+    "label": "Add foreign key \"announcement_userId_fkey\" on \"announcement\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "announcement_userId_fkey",
+        "table": "announcement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"announcement_userId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "announcement_userId_fkey",
+          "public",
+          "\"public\".\"announcement\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"announcement_userId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"announcement\"\nADD CONSTRAINT \"announcement_userId_fkey\"\nFOREIGN KEY (\"userId\")\nREFERENCES \"public\".\"user\" (\"id\")\nON DELETE SET NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"announcement_userId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "announcement_userId_fkey",
+          "public",
+          "\"public\".\"announcement\""
+        ]
+      }
+    ]
+  }
+]

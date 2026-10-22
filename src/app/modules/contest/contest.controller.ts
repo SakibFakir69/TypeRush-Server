@@ -1,4 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/await-thenable */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { Request, Response, NextFunction } from "express";
+import { Temporal } from "temporal-polyfill";
 import { DB } from "../../../../prisma/db/prisma.db.js";
 import { returnResponse } from "../../../helpers/return-response.js";
 import { StatusCodes } from "http-status-codes";
@@ -9,6 +14,7 @@ import {
   joinContestSchema,
   leaveContestSchema,
   deleteContestSchema,
+  getContestsQuerySchemaAll,
 } from "./contest.validation.js";
 
 /**
@@ -26,8 +32,11 @@ const createContest = async (req: Request, res: Response, next: NextFunction) =>
     if (!userId) {
       return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "User unauthorized");
     }
+    console.log(req.body , "[ CREATE CONTEST BODY ] ")
 
     const parsed = createContestSchema.safeParse({ body: req.body });
+    console.log(parsed )
+
     if (!parsed.success) {
       return returnResponse(
         res,
@@ -38,10 +47,20 @@ const createContest = async (req: Request, res: Response, next: NextFunction) =>
       );
     }
 
-    const { name, content, time } = parsed.data.body;
+    const { name, content, time, contestDate } = parsed.data.body;
+
+    // Prisma 8: timestamptz columns encode Temporal.Instant — a JS Date throws
+    // RUNTIME.ENCODE_FAILED, so convert before the write.
+    const contestDateInstant = Temporal.Instant.from(contestDate.toISOString());
 
     // Prisma 8: .create(...) takes the fields directly, no `data` wrapper.
-    const contest = await DB.Contest.create({ name, content, time, userId });
+    const contest = await DB.Contest.create({
+      name,
+      content,
+      time,
+      contestDate: contestDateInstant,
+      userId,
+    });
 
     return returnResponse(res, true, StatusCodes.CREATED, "Contest created successfully", contest);
   } catch (error) {
@@ -214,7 +233,7 @@ const leaveContest = async (req: Request, res: Response, next: NextFunction) => 
 const deleteContest = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const requesterId = req.user?.userId as string;
-    const requesterRole = req.user?.role as string | undefined;
+    const requesterRole = req.user?.role;
     if (!requesterId) {
       return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "User unauthorized");
     }
@@ -249,6 +268,76 @@ const deleteContest = async (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
+
+const getAllContests = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const parsed = getContestsQuerySchemaAll.safeParse({
+      query: req.query,
+    });
+
+    if (!parsed.success) {
+      return returnResponse(
+        res,
+        false,
+        StatusCodes.BAD_REQUEST,
+        "Invalid query parameters",
+        parsed.error.flatten()
+      );
+    }
+
+    const {
+      limit,
+      page,
+      sortBy,
+    } = parsed.data.query;
+
+    const skip = (page - 1) * limit;
+
+    const query = DB.Contest;
+
+    const contests = await query
+      .include("user")
+      .orderBy((c) =>
+        sortBy === "asc"
+          ? c.createdAt.asc()
+          : c.createdAt.desc()
+      )
+      .limit(limit)
+      .offset(skip)
+      .all();
+
+    const { total } = await query.aggregate((a) => ({
+      total: a.count(),
+    }));
+
+    return returnResponse(
+      res,
+      true,
+      StatusCodes.OK,
+      "All contests fetched successfully",
+      {
+        contests,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+          hasNextPage: page < Math.ceil(total / limit),
+          hasPreviousPage: page > 1,
+        },
+      }
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+
 export const contestController = {
   createContest,
   getContests,
@@ -257,4 +346,5 @@ export const contestController = {
   joinContest,
   leaveContest,
   deleteContest,
+  getAllContests
 };
