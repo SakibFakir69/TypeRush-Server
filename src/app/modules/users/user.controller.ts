@@ -13,133 +13,134 @@ import { OTP_TTL } from "../../../const/auth.const.js";
 import { redis } from "../../../config/redis-config.js";
 import sendOtpEmail from "../../../utils/otp/otp.js";
 import { USER_SAFE_FIELDS } from "../../../const/user.const.js";
+import { or } from "@prisma/orm-postgres/orm-client";
 
 
 
 const createUser = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const data = createUserSchema.parse(req.body);
+  try {
+    const data = createUserSchema.parse(req.body);
 
-        const isUserExits = await DB.User.first({ email: data.email });
-        if (isUserExits) {
-            return returnResponse(res, false, StatusCodes.BAD_REQUEST, "Please provide another email");
-        }
-
-        const hashedPassword = await bcrypt.hash(data.password, 10);
-
-        const user = await DB.User.create({
-            name: data.name,
-            fullName: data.fullName,
-            email: data.email,
-            country: data.country,
-            password: hashedPassword,
-            age: data.age ?? null,
-            avatarUrl: data.avatarUrl ?? null,
-            bio: data.bio ?? null,
-            emailVerified: false,
-            role:data?.role ?? "USER"
-        });
-
-        const { password, ...userWithoutPassword } = user;
-
-        // fire-and-forget OTP send — don't fail signup if email fails
-    
-        const email = data.email.trim().toLowerCase();
-        const otp = generateOtp();
-        await redis.set(`otp:verify:${email}`, hashOtp(otp), 'EX', OTP_TTL);
-        await redis.del(`otp:verify:attempts:${email}`);
-
-        try {
-            
-            await sendOtpEmail(email, otp);
-            console.log("[ EMAIL SENT ]")
-        } catch (err) {
-            console.error('verify-email OTP send failed:', err);
-        }
-
-        return returnResponse(res, true, StatusCodes.CREATED, "User created. Please verify your email.", userWithoutPassword);
-
-    } catch (error) {
-        if (error instanceof ZodError) {
-            res.status(400).json({ message: "Validation failed" });
-            return;
-        }
-        next(error);
+    const isUserExits = await DB.User.first({ email: data.email });
+    if (isUserExits) {
+      return returnResponse(res, false, StatusCodes.BAD_REQUEST, "Please provide another email");
     }
+
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+
+    const user = await DB.User.create({
+      name: data.name,
+      fullName: data.fullName,
+      email: data.email,
+      country: data.country,
+      password: hashedPassword,
+      age: data.age ?? null,
+      avatarUrl: data.avatarUrl ?? null,
+      bio: data.bio ?? null,
+      emailVerified: false,
+      role: data?.role ?? "USER"
+    });
+
+    const { password, ...userWithoutPassword } = user;
+
+    // fire-and-forget OTP send — don't fail signup if email fails
+
+    const email = data.email.trim().toLowerCase();
+    const otp = generateOtp();
+    await redis.set(`otp:verify:${email}`, hashOtp(otp), 'EX', OTP_TTL);
+    await redis.del(`otp:verify:attempts:${email}`);
+
+    try {
+
+      await sendOtpEmail(email, otp);
+      console.log("[ EMAIL SENT ]")
+    } catch (err) {
+      console.error('verify-email OTP send failed:', err);
+    }
+
+    return returnResponse(res, true, StatusCodes.CREATED, "User created. Please verify your email.", userWithoutPassword);
+
+  } catch (error) {
+    if (error instanceof ZodError) {
+      res.status(400).json({ message: "Validation failed" });
+      return;
+    }
+    next(error);
+  }
 };
 
 const getMe = async (req: Request, res: Response, next: NextFunction) => {
-    
-    console.log(req.user ,'[ CALL GETME ] ')
-    try {
-        const userId = req.user?.userId as string;
 
-        if (!userId) {
-            return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "You are unauthorized");
-        }
+  console.log(req.user, '[ CALL GETME ] ')
+  try {
+    const userId = req.user?.userId as string;
 
-        const userData = await DB.User.first({id:userId});
-        if(!userData){
-           return returnResponse (res,false, StatusCodes.BAD_REQUEST, "User data not found")
-        }
-        console.log(userData ,"[ USER DATA ]")
-        
-        return returnResponse(res,true , StatusCodes.OK, "User data retrieve successfully",userData);
-
-
-    } catch (error) {
-        next(error);
+    if (!userId) {
+      return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "You are unauthorized");
     }
+
+    const userData = await DB.User.first({ id: userId });
+    if (!userData) {
+      return returnResponse(res, false, StatusCodes.BAD_REQUEST, "User data not found")
+    }
+    console.log(userData, "[ USER DATA ]")
+
+    return returnResponse(res, true, StatusCodes.OK, "User data retrieve successfully", userData);
+
+
+  } catch (error) {
+    next(error);
+  }
 }
 
 
 
 const updateUser = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const userId = req.user?.userId as string;
-        const { bio, avatarUrl, country, fullName, name ,age } = req.body;
+  try {
+    const userId = req.user?.userId as string;
+    const { bio, avatarUrl, country, fullName, name, age } = req.body;
 
-        if (!userId) {
-            return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "You are unauthorized");
-        }
-
-        const data: Record<string, unknown> = {};
-        if (name !== undefined) data.name = name;
-        if (avatarUrl !== undefined) data.avatarUrl = avatarUrl;
-        if (country !== undefined) data.country = country;
-        if (fullName !== undefined) data.fullName = fullName;
-        if (bio !== undefined) data.bio = bio;
-        if(age!==undefined) data.age=age;
-
-        if (Object.keys(data).length === 0) {
-            return returnResponse(res, false, StatusCodes.BAD_REQUEST, "No fields provided to update");
-        };
-
-        const updatedUser = await DB.User.where({ id: userId }).update(data);
-
-        return returnResponse(res, true, StatusCodes.OK, "Profile updated successfully", updatedUser);
-    } catch (error) {
-        next(error);
+    if (!userId) {
+      return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "You are unauthorized");
     }
+
+    const data: Record<string, unknown> = {};
+    if (name !== undefined) data.name = name;
+    if (avatarUrl !== undefined) data.avatarUrl = avatarUrl;
+    if (country !== undefined) data.country = country;
+    if (fullName !== undefined) data.fullName = fullName;
+    if (bio !== undefined) data.bio = bio;
+    if (age !== undefined) data.age = age;
+
+    if (Object.keys(data).length === 0) {
+      return returnResponse(res, false, StatusCodes.BAD_REQUEST, "No fields provided to update");
+    };
+
+    const updatedUser = await DB.User.where({ id: userId }).update(data);
+
+    return returnResponse(res, true, StatusCodes.OK, "Profile updated successfully", updatedUser);
+  } catch (error) {
+    next(error);
+  }
 };
 const deleteUser = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const userId = req.user?.userId as string;
+  try {
+    const userId = req.user?.userId as string;
 
-        if (!userId) {
-            return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "You are unauthorized");
-        }
-
-        const deletedUser = await DB.User.where({ id: userId }).update({isDelete:true});
-
-        if (!deletedUser) {
-            return returnResponse(res, false, StatusCodes.NOT_FOUND, "User not found");
-        }
-
-        return returnResponse(res, true, StatusCodes.OK, "User deleted successfully");
-    } catch (error) {
-        next(error);
+    if (!userId) {
+      return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "You are unauthorized");
     }
+
+    const deletedUser = await DB.User.where({ id: userId }).update({ isDelete: true });
+
+    if (!deletedUser) {
+      return returnResponse(res, false, StatusCodes.NOT_FOUND, "User not found");
+    }
+
+    return returnResponse(res, true, StatusCodes.OK, "User deleted successfully");
+  } catch (error) {
+    next(error);
+  }
 };
 
 
@@ -149,7 +150,7 @@ const deleteUser = async (req: Request, res: Response, next: NextFunction) => {
 
 const getAllUsers = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    
+
     const parsed = userQuerySchema.safeParse(req.query);
 
     if (!parsed.success) {
@@ -175,18 +176,23 @@ const getAllUsers = async (req: Request, res: Response, next: NextFunction) => {
     }
     if (search) {
       query = query.where((u) =>
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-        u.name.ilike(`%${search}%`).or(u.email.ilike(`%${search}%`)).or(u.fullName.ilike(`%${search}%`))
+        or(
+          u.name.ilike(`%${search}%`),
+          u.email.ilike(`%${search}%`),
+          u.fullName.ilike(`%${search}%`)
+        )
       );
     }
 
     const rows = await query
       .select(...USER_SAFE_FIELDS)
-      .orderBy((u) => (sortBy === "asc" ? u[orderBy].asc() : u[orderBy].desc()))
+      .orderBy((u) => {
+        const column = u[orderBy as keyof typeof u] as { asc: () => unknown; desc: () => unknown };
+        return sortBy === "asc" ? column.asc() : column.desc();
+      })
       .limit(limit)
       .offset(skip)
       .all();
-
     const { total } = await query.aggregate((a) => ({ total: a.count() }));
 
     res.status(200).json({
@@ -286,6 +292,6 @@ const restoreUser = async (req: Request, res: Response, next: NextFunction) => {
 
 
 export const userController = {
-    createUser, updateUser,getMe,deleteUser,restoreUser,getUserById,updateUserRole,getAllUsers
+  createUser, updateUser, getMe, deleteUser, restoreUser, getUserById, updateUserRole, getAllUsers
 
 };
