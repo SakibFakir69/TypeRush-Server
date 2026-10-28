@@ -41,5 +41,7 @@
     "moduleDetection": "force",
     "skipLibCheck": true
   },
+    "include": ["src/**/*"],
+  
   "exclude": ["node_modules", "migrations/**/*", "migrations-v8-backup-DONOTUSE/**/*", "dist/**/*"]
 }
