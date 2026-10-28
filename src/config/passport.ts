@@ -1,6 +1,6 @@
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
-import { DB } from "../../prisma/db/prisma.db.js";
+import { DB } from "../lib/prisma.db.js";
 
 passport.use(
   new GoogleStrategy(

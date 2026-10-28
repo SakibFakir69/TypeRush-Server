@@ -1,14 +1,14 @@
+// practice.controller.ts
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { Response, Request, NextFunction } from "express";
-import { DB } from "../../../../prisma/db/prisma.db.js";
+import { prisma } from "../../../lib/prisma.db.js";
+import type { Prisma } from "@prisma/client";
 import { createParagraphSchema, resultQuerySchema, submitResultBodySchema } from "./pratice.validation.js";
 
 import { returnResponse } from "../../../helpers/return-response.js";
 import { StatusCodes } from "http-status-codes";
 import { sortOrder } from "../../../utils/practice/utils.practice.js";
 import { PracticeServices } from "./practice.service.js";
-
-
 
 const addPracticeContent = async (
   req: Request,
@@ -63,21 +63,20 @@ const practiceAllTopic = async (req: Request, res: Response, next: NextFunction)
     const sortDir = sortBy === 'asc' ? 'asc' : 'desc';
     const searchValue = typeof search === 'string' ? search.trim() : '';
 
-    const buildQuery = () => {
-      let q = DB.Paragraph.where({ isDeleted: false });
-      if (searchValue) {
-        q = q.where((p) => p.content.ilike(`%${searchValue}%`));
-      }
-      return q;
-    };
+    const where: Prisma.ParagraphWhereInput = { isDeleted: false };
+    if (searchValue) {
+      where.content = { contains: searchValue, mode: "insensitive" };
+    }
 
-    const rowData = await buildQuery()
-      .orderBy((p) => (sortDir === 'asc' ? p[sortField].asc() : p[sortField].desc()))
-      .limit(take)
-      .offset(skip)
-      .all();
-
-    const { total } = await buildQuery().aggregate((a) => ({ total: a.count() }));
+    const [rowData, total] = await Promise.all([
+      prisma.paragraph.findMany({
+        where,
+        orderBy: { [sortField]: sortDir },
+        take,
+        skip,
+      }),
+      prisma.paragraph.count({ where }),
+    ]);
 
     res.status(200).json({
       success: true,
@@ -112,9 +111,6 @@ const getPracticeParagraph = async (req: Request, res: Response, next: NextFunct
   }
 }
 
-
-
-
 const submitPracticeResult = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId;
@@ -148,18 +144,16 @@ const submitPracticeResult = async (req: Request, res: Response, next: NextFunct
     );
     console.log(result , "[ RESULT ]  ");
 
-
     return returnResponse(res, true, StatusCodes.CREATED, "Result saved", result);
   } catch (error) {
     next(error);
   }
 };
 
-
 const practiceLeaderboard = async (req: Request, res: Response, next: NextFunction) => {
   try {
     console.log("leader board")
-    
+
     const parsed = resultQuerySchema.safeParse(req.query);
 
     if (!parsed.success) {
@@ -170,31 +164,27 @@ const practiceLeaderboard = async (req: Request, res: Response, next: NextFuncti
 
     const { paragraphId, limit, cursor } = parsed.data;
 
-    let query = DB.Result.orderBy(sortOrder);
-
+    const where: Prisma.ResultWhereInput = {};
     if (paragraphId) {
-      query = query.where({ paragraphId });
+      where.paragraphId = paragraphId;
     }
 
     if (cursor) {
-      const prev = await DB.Result.where({ id: cursor }).first();
+      const prev = await prisma.result.findFirst({ where: { id: cursor } });
       if (!prev) {
         return returnResponse(res, false, StatusCodes.BAD_REQUEST, "Invalid cursor");
       }
-
-      query = query.cursor({
-        wpm: prev.wpm,
-        accuracy: prev.accuracy,
-        timeTaken: prev.timeTaken,
-        createdAt: prev.createdAt,
-        id: prev.id,
-      });
     }
 
-    const rows = await query
-      .select("id", "userId", "wpm", "accuracy", "timeTaken", "createdAt")
-      .limit(limit + 1)
-      .all();
+    // sortOrder must now be a plain Prisma orderBy array, e.g.
+    // [{ wpm: "desc" }, { accuracy: "desc" }, { timeTaken: "asc" }, { createdAt: "asc" }, { id: "asc" }]
+    const rows = await prisma.result.findMany({
+      where,
+      orderBy: sortOrder,
+      select: { id: true, userId: true, wpm: true, accuracy: true, timeTaken: true, createdAt: true },
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    });
 
     const hasNextPage = rows.length > limit;
     const page = hasNextPage ? rows.slice(0, limit) : rows;
@@ -202,9 +192,10 @@ const practiceLeaderboard = async (req: Request, res: Response, next: NextFuncti
     const userIds = [...new Set(page.map((r) => r.userId).filter((id): id is string => !!id))];
 
     const users = userIds.length
-      ? await DB.User.select("id", "name")
-        .where((u) => u.id.in(userIds))
-        .all()
+      ? await prisma.user.findMany({
+          where: { id: { in: userIds } },
+          select: { id: true, name: true },
+        })
       : [];
 
     const nameById = new Map(users.map((u) => [u.id, u.name]));
@@ -227,8 +218,6 @@ const practiceLeaderboard = async (req: Request, res: Response, next: NextFuncti
     next(error);
   }
 };
-
-
 
 const deletePracticeContent = async (
   req: Request,
@@ -282,8 +271,6 @@ const deletePracticeContent = async (
   }
 };
 
-
 export const practiceController = {
   practiceAllTopic, addPracticeContent, getPracticeParagraph, submitPracticeResult, practiceLeaderboard,deletePracticeContent
-
 }

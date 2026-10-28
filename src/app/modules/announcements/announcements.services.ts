@@ -1,4 +1,4 @@
-import { DB } from "../../../../prisma/db/prisma.db.js";
+import { DB } from "../../../lib/prisma.db.js";
 import type { z } from "zod";
 import type { createAnnouncementSchema, updateAnnouncementSchema } from "./announcements.validation.js";
 

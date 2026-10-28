@@ -3,7 +3,7 @@ import type { Response, Request, NextFunction } from "express";
 import { returnResponse } from "../../../helpers/return-response.js";
 import { StatusCodes } from "http-status-codes";
 import bcrypt from "bcrypt"
-import { DB } from "../../../../prisma/db/prisma.db.js";
+import { DB } from "../../../lib/prisma.db.js";
 import jwt from "jsonwebtoken"
 import { setCookies } from "../../../helpers/set-cookies.js";
 import { redis } from "../../../config/redis-config.js";
