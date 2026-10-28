@@ -6,6 +6,7 @@ WORKDIR /app
 FROM base AS deps
 COPY package*.json ./
 COPY prisma ./prisma
+COPY prisma.config.ts ./
 RUN npm ci
 
 # ---- Build ----
@@ -18,6 +19,7 @@ RUN npx tsc -p tsconfig.json
 FROM base AS prod-deps
 COPY package*.json ./
 COPY prisma ./prisma
+COPY prisma.config.ts ./
 RUN npm ci --omit=dev
 RUN npx prisma generate
 

@@ -218,15 +218,15 @@ const leaveContest = async (req: Request, res: Response, next: NextFunction) => 
 
     const contestId = parsed.data.params.id;
 
-    // Prisma 7's .delete() needs a unique where and throws P2025 if nothing
-    // matches. contestId+userId isn't a single unique field here, so use
-    // deleteMany and check the affected count instead.
-    const { count } = await prisma.contestParticipant.deleteMany({
-      where: { contestId, userId },
-    });
-
-    if (count === 0) {
-      return returnResponse(res, false, StatusCodes.NOT_FOUND, "Not a participant");
+    try {
+      await prisma.contestParticipant.delete({
+        where: { userId_contestId: { userId, contestId } },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+        return returnResponse(res, false, StatusCodes.NOT_FOUND, "Not a participant");
+      }
+      throw error;
     }
 
     return returnResponse(res, true, StatusCodes.OK, "Left contest");
