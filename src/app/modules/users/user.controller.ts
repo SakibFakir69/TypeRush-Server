@@ -3,8 +3,8 @@
 import type { Response, Request, NextFunction } from "express";
 import bcrypt from "bcrypt";
 import { ZodError } from "zod";
-import { createUserSchema, updateUserRoleSchema, userQuerySchema, type User } from "./user.validation.js";
-import { DB } from "../../../../prisma/db/prisma.db.js";
+import type { Prisma } from "@prisma/client";
+import { createUserSchema, updateUserRoleSchema, userQuerySchema} from "./user.validation.js";
 import { StatusCodes } from "http-status-codes";
 import { returnResponse } from "../../../helpers/return-response.js";
 import { generateOtp } from "../../../helpers/otp-code.js";
@@ -13,143 +13,132 @@ import { OTP_TTL } from "../../../const/auth.const.js";
 import { redis } from "../../../config/redis-config.js";
 import sendOtpEmail from "../../../utils/otp/otp.js";
 import { USER_SAFE_FIELDS } from "../../../const/user.const.js";
+import { prisma } from "../../../lib/prisma.db.js";
 
 
 
 const createUser = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const data = createUserSchema.parse(req.body);
+  try {
+    const data = createUserSchema.parse(req.body);
 
-        const isUserExits = await DB.User.first({ email: data.email });
-        if (isUserExits) {
-            return returnResponse(res, false, StatusCodes.BAD_REQUEST, "Please provide another email");
-        }
-
-        const hashedPassword = await bcrypt.hash(data.password, 10);
-
-        const user = await DB.User.create({
-            name: data.name,
-            fullName: data.fullName,
-            email: data.email,
-            country: data.country,
-            password: hashedPassword,
-            age: data.age ?? null,
-            avatarUrl: data.avatarUrl ?? null,
-            bio: data.bio ?? null,
-            emailVerified: false,
-            role:data?.role ?? "USER"
-        });
-
-        const { password, ...userWithoutPassword } = user;
-
-        // fire-and-forget OTP send — don't fail signup if email fails
-    
-        const email = data.email.trim().toLowerCase();
-        const otp = generateOtp();
-        await redis.set(`otp:verify:${email}`, hashOtp(otp), 'EX', OTP_TTL);
-        await redis.del(`otp:verify:attempts:${email}`);
-
-        try {
-            
-            await sendOtpEmail(email, otp);
-            console.log("[ EMAIL SENT ]")
-        } catch (err) {
-            console.error('verify-email OTP send failed:', err);
-        }
-
-        return returnResponse(res, true, StatusCodes.CREATED, "User created. Please verify your email.", userWithoutPassword);
-
-    } catch (error) {
-        if (error instanceof ZodError) {
-            res.status(400).json({ message: "Validation failed" });
-            return;
-        }
-        next(error);
+    const isUserExits = await prisma.user.findFirst({ where: { email: data.email } });
+    if (isUserExits) {
+      return returnResponse(res, false, StatusCodes.BAD_REQUEST, "Please provide another email");
     }
+
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+
+    const user = await prisma.user.create({
+      data: {
+        name: data.name,
+        fullName: data.fullName,
+        email: data.email,
+        country: data.country,
+        password: hashedPassword,
+        age: data.age ?? null,
+        avatarUrl: data.avatarUrl ?? null,
+        bio: data.bio ?? null,
+        emailVerified: false,
+        role: data?.role ?? "USER"
+      }
+    });
+
+    const { password, ...userWithoutPassword } = user;
+
+    const email = data.email.trim().toLowerCase();
+    const otp = generateOtp();
+    await redis.set(`otp:verify:${email}`, hashOtp(otp), 'EX', OTP_TTL);
+    await redis.del(`otp:verify:attempts:${email}`);
+
+    try {
+      await sendOtpEmail(email, otp);
+      console.log("[ EMAIL SENT ]")
+    } catch (err) {
+      console.error('verify-email OTP send failed:', err);
+    }
+
+    return returnResponse(res, true, StatusCodes.CREATED, "User created. Please verify your email.", userWithoutPassword);
+
+  } catch (error) {
+    if (error instanceof ZodError) {
+      res.status(400).json({ message: "Validation failed" });
+      return;
+    }
+    next(error);
+  }
 };
 
 const getMe = async (req: Request, res: Response, next: NextFunction) => {
-    
-    console.log(req.user ,'[ CALL GETME ] ')
-    try {
-        const userId = req.user?.userId as string;
+  try {
+    const userId = req.user?.userId as string;
 
-        if (!userId) {
-            return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "You are unauthorized");
-        }
-
-        const userData = await DB.User.first({id:userId});
-        if(!userData){
-           return returnResponse (res,false, StatusCodes.BAD_REQUEST, "User data not found")
-        }
-        console.log(userData ,"[ USER DATA ]")
-        
-        return returnResponse(res,true , StatusCodes.OK, "User data retrieve successfully",userData);
-
-
-    } catch (error) {
-        next(error);
+    if (!userId) {
+      return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "You are unauthorized");
     }
+
+    const userData = await prisma.user.findFirst({ where: { id: userId } });
+    if (!userData) {
+      return returnResponse(res, false, StatusCodes.BAD_REQUEST, "User data not found")
+    }
+
+    return returnResponse(res, true, StatusCodes.OK, "User data retrieve successfully", userData);
+
+  } catch (error) {
+    next(error);
+  }
 }
 
-
-
 const updateUser = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const userId = req.user?.userId as string;
-        const { bio, avatarUrl, country, fullName, name ,age } = req.body;
+  try {
+    const userId = req.user?.userId as string;
+    const { bio, avatarUrl, country, fullName, name, age } = req.body;
 
-        if (!userId) {
-            return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "You are unauthorized");
-        }
-
-        const data: Record<string, unknown> = {};
-        if (name !== undefined) data.name = name;
-        if (avatarUrl !== undefined) data.avatarUrl = avatarUrl;
-        if (country !== undefined) data.country = country;
-        if (fullName !== undefined) data.fullName = fullName;
-        if (bio !== undefined) data.bio = bio;
-        if(age!==undefined) data.age=age;
-
-        if (Object.keys(data).length === 0) {
-            return returnResponse(res, false, StatusCodes.BAD_REQUEST, "No fields provided to update");
-        };
-
-        const updatedUser = await DB.User.where({ id: userId }).update(data);
-
-        return returnResponse(res, true, StatusCodes.OK, "Profile updated successfully", updatedUser);
-    } catch (error) {
-        next(error);
+    if (!userId) {
+      return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "You are unauthorized");
     }
+
+    const data: Record<string, unknown> = {};
+    if (name !== undefined) data.name = name;
+    if (avatarUrl !== undefined) data.avatarUrl = avatarUrl;
+    if (country !== undefined) data.country = country;
+    if (fullName !== undefined) data.fullName = fullName;
+    if (bio !== undefined) data.bio = bio;
+    if (age !== undefined) data.age = age;
+
+    if (Object.keys(data).length === 0) {
+      return returnResponse(res, false, StatusCodes.BAD_REQUEST, "No fields provided to update");
+    };
+
+    const updatedUser = await prisma.user.update({ where: { id: userId }, data });
+
+    return returnResponse(res, true, StatusCodes.OK, "Profile updated successfully", updatedUser);
+  } catch (error) {
+    next(error);
+  }
 };
+
 const deleteUser = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const userId = req.user?.userId as string;
+  try {
+    const userId = req.user?.userId as string;
 
-        if (!userId) {
-            return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "You are unauthorized");
-        }
-
-        const deletedUser = await DB.User.where({ id: userId }).update({isDelete:true});
-
-        if (!deletedUser) {
-            return returnResponse(res, false, StatusCodes.NOT_FOUND, "User not found");
-        }
-
-        return returnResponse(res, true, StatusCodes.OK, "User deleted successfully");
-    } catch (error) {
-        next(error);
+    if (!userId) {
+      return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "You are unauthorized");
     }
+
+    const deletedUser = await prisma.user.update({ where: { id: userId }, data: { isDelete: true } });
+
+    if (!deletedUser) {
+      return returnResponse(res, false, StatusCodes.NOT_FOUND, "User not found");
+    }
+
+    return returnResponse(res, true, StatusCodes.OK, "User deleted successfully");
+  } catch (error) {
+    next(error);
+  }
 };
-
-
-
-
-
 
 const getAllUsers = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    
     const parsed = userQuerySchema.safeParse(req.query);
 
     if (!parsed.success) {
@@ -165,29 +154,34 @@ const getAllUsers = async (req: Request, res: Response, next: NextFunction) => {
     const { limit, page, orderBy, sortBy, search, role, includeDeleted } = parsed.data;
     const skip = (page - 1) * limit;
 
-    let query = DB.User;
+    const where: Prisma.UserWhereInput = {};
 
     if (!includeDeleted) {
-      query = query.where({ isDelete: false });
+      where.isDelete = false;
     }
     if (role) {
-      query = query.where({ role });
+      where.role = role;
     }
     if (search) {
-      query = query.where((u) =>
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-        u.name.ilike(`%${search}%`).or(u.email.ilike(`%${search}%`)).or(u.fullName.ilike(`%${search}%`))
-      );
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+        { fullName: { contains: search, mode: "insensitive" } },
+      ];
     }
 
-    const rows = await query
-      .select(...USER_SAFE_FIELDS)
-      .orderBy((u) => (sortBy === "asc" ? u[orderBy].asc() : u[orderBy].desc()))
-      .limit(limit)
-      .offset(skip)
-      .all();
+    const selectFields = Object.fromEntries(USER_SAFE_FIELDS.map((field) => [field, true]));
 
-    const { total } = await query.aggregate((a) => ({ total: a.count() }));
+    const [rows, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        select: selectFields,
+        orderBy: { [orderBy]: sortBy },
+        take: limit,
+        skip,
+      }),
+      prisma.user.count({ where }),
+    ]);
 
     res.status(200).json({
       success: true,
@@ -212,7 +206,9 @@ const getUserById = async (req: Request, res: Response, next: NextFunction) => {
       return returnResponse(res, false, StatusCodes.BAD_REQUEST, "Not found user id");
     }
 
-    const userData = await DB.User.select(...USER_SAFE_FIELDS).where({ id: userId }).first();
+    const selectFields = Object.fromEntries(USER_SAFE_FIELDS.map((field) => [field, true]));
+
+    const userData = await prisma.user.findFirst({ where: { id: userId }, select: selectFields });
 
     if (!userData) {
       return returnResponse(res, false, StatusCodes.NOT_FOUND, "User not found");
@@ -244,20 +240,18 @@ const updateUserRole = async (req: Request, res: Response, next: NextFunction) =
       );
     }
 
-    const existing = await DB.User.where({ id: userId }).first();
+    const existing = await prisma.user.findFirst({ where: { id: userId } });
     if (!existing) {
       return returnResponse(res, false, StatusCodes.NOT_FOUND, "User not found");
     }
 
-    const updatedUser = await DB.User.where({ id: userId }).update({ role: result.data.role });
+    const updatedUser = await prisma.user.update({ where: { id: userId }, data: { role: result.data.role } });
 
     return returnResponse(res, true, StatusCodes.OK, "User role updated successfully", updatedUser);
   } catch (error) {
     next(error);
   }
 };
-
-
 
 const restoreUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -267,12 +261,12 @@ const restoreUser = async (req: Request, res: Response, next: NextFunction) => {
       return returnResponse(res, false, StatusCodes.BAD_REQUEST, "Not found user id");
     }
 
-    const existing = await DB.User.where({ id: userId }).first();
+    const existing = await prisma.user.findFirst({ where: { id: userId } });
     if (!existing) {
       return returnResponse(res, false, StatusCodes.NOT_FOUND, "User not found");
     }
 
-    const restoredUser = await DB.User.where({ id: userId }).update({ isDelete: false });
+    const restoredUser = await prisma.user.update({ where: { id: userId }, data: { isDelete: false } });
 
     return returnResponse(res, true, StatusCodes.OK, "User restored successfully", restoredUser);
   } catch (error) {
@@ -280,12 +274,6 @@ const restoreUser = async (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
-
-
-
-
-
 export const userController = {
-    createUser, updateUser,getMe,deleteUser,restoreUser,getUserById,updateUserRole,getAllUsers
-
+  createUser, updateUser, getMe, deleteUser, restoreUser, getUserById, updateUserRole, getAllUsers
 };

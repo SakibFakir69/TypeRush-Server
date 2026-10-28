@@ -1,6 +1,6 @@
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
-import { DB } from "../../prisma/db/prisma.db.js";
+import { DB } from "../lib/prisma.db.js";
 
 passport.use(
   new GoogleStrategy(
@@ -19,17 +19,17 @@ passport.use(
         }
 
         // 1. Find user by Google ID
-        let user = await DB.user.first({ googleId: profile.id });
+        let user = await DB.User.first({ googleId: profile.id });
 
         if (user) {
           return done(null, user);
         }
 
         // 2. Check if email already exists — link the account
-        const existingUser = await DB.user.first({ email });
+        const existingUser = await DB.User.first({ email });
 
         if (existingUser) {
-          user = await DB.user.where({ id: existingUser.id }).update({
+          user = await DB.User.where({ id: existingUser.id }).update({
             googleId: profile.id,
             authProvider: "google",
             emailVerified: true,
@@ -39,17 +39,16 @@ passport.use(
         }
 
         // 3. Create new user (now correctly reachable — runs when no match at all)
-        user = await DB.user.create({
-          data: {
-            email,
-            googleId: profile.id,
-            name: profile.name?.givenName ?? profile.displayName,
-            fullName: profile.displayName,
-            avatarUrl: profile.photos?.[0]?.value,
-            authProvider: "google",
-            emailVerified: true,
-          },
+        user = await DB.User.create({
+          email,
+          googleId: profile.id,
+          name: profile.name?.givenName ?? profile.displayName,
+          fullName: profile.displayName,
+          avatarUrl: profile.photos?.[0]?.value ?? null,
+          authProvider: "google",
+          emailVerified: true,
         });
+        
 
         return done(null, user ?? false);
       } catch (error) {

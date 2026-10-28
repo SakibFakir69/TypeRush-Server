@@ -2,7 +2,7 @@ import type { Response, Request, NextFunction } from "express";
 import { createAnnouncementSchema, updateAnnouncementSchema } from "./announcements.validation.js";
 import { returnResponse } from "../../../helpers/return-response.js";
 import { StatusCodes } from "http-status-codes";
-import { AnnouncementServices } from "./announcements.services.js";
+import { AnnouncementServices } from "./announcements.service.js";
 
 const createAnnouncement = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -12,7 +12,6 @@ const createAnnouncement = async (req: Request, res: Response, next: NextFunctio
     }
 
     const result = createAnnouncementSchema.safeParse(req.body);
-
     if (!result.success) {
       return returnResponse(
         res,
@@ -31,43 +30,27 @@ const createAnnouncement = async (req: Request, res: Response, next: NextFunctio
   }
 };
 
-const getAllAnnouncements = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+const getAllAnnouncements = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 10));
 
-    const data = await AnnouncementServices.getAllAnnouncements({
-      page,
-      limit,
-    });
+    const data = await AnnouncementServices.getAllAnnouncements({ page, limit });
 
-    return returnResponse(
-      res,
-      true,
-      StatusCodes.OK,
-      "All announcements fetched successfully",
-      data
-    );
+    return returnResponse(res, true, StatusCodes.OK, "All announcements fetched successfully", data);
   } catch (error) {
     next(error);
   }
 };
 
-
 const updateAnnouncement = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id: announcementId } = req.params as { id: string };
-
     if (!announcementId) {
       return returnResponse(res, false, StatusCodes.BAD_REQUEST, "Not found announcement id");
     }
 
     const result = updateAnnouncementSchema.safeParse(req.body);
-
     if (!result.success) {
       return returnResponse(
         res,
@@ -79,7 +62,6 @@ const updateAnnouncement = async (req: Request, res: Response, next: NextFunctio
     }
 
     const updated = await AnnouncementServices.updateAnnouncement(announcementId, result.data);
-
     if (!updated) {
       return returnResponse(res, false, StatusCodes.NOT_FOUND, "Announcement not found");
     }
@@ -93,13 +75,11 @@ const updateAnnouncement = async (req: Request, res: Response, next: NextFunctio
 const deleteAnnouncement = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id: announcementId } = req.params as { id: string };
-
     if (!announcementId) {
       return returnResponse(res, false, StatusCodes.BAD_REQUEST, "Not found announcement id");
     }
 
     const deleted = await AnnouncementServices.deleteAnnouncement(announcementId);
-
     if (!deleted) {
       return returnResponse(res, false, StatusCodes.NOT_FOUND, "Announcement not found");
     }

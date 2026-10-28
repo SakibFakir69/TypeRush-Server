@@ -3,8 +3,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { Request, Response, NextFunction } from "express";
-import { Temporal } from "temporal-polyfill";
-import { DB } from "../../../../prisma/db/prisma.db.js";
+import { Prisma } from "@prisma/client";
+import { prisma } from "../../../lib/prisma.db.js";
 import { returnResponse } from "../../../helpers/return-response.js";
 import { StatusCodes } from "http-status-codes";
 import {
@@ -18,12 +18,8 @@ import {
 } from "./contest.validation.js";
 
 /**
- * NOTE: userId/role now come from req.user (auth middleware), not the request
- * body. The old controller took them from req.body as a TODO placeholder —
- * trusting a client-supplied userId/role is a privilege-escalation bug, so
- * this rewrite closes it. Update createContestSchema / joinContestSchema /
- * leaveContestSchema / deleteContestSchema to drop userId (and role, for
- * delete) from their body shape, since they're no longer read from there.
+ * NOTE: userId/role come from req.user (auth middleware), not the request
+ * body — not reintroduced by this Prisma 7 conversion.
  */
 
 const createContest = async (req: Request, res: Response, next: NextFunction) => {
@@ -49,17 +45,16 @@ const createContest = async (req: Request, res: Response, next: NextFunction) =>
 
     const { name, content, time, contestDate } = parsed.data.body;
 
-    // Prisma 8: timestamptz columns encode Temporal.Instant — a JS Date throws
-    // RUNTIME.ENCODE_FAILED, so convert before the write.
-    const contestDateInstant = Temporal.Instant.from(contestDate.toISOString());
-
-    // Prisma 8: .create(...) takes the fields directly, no `data` wrapper.
-    const contest = await DB.Contest.create({
-      name,
-      content,
-      time,
-      contestDate: contestDateInstant,
-      userId,
+    // Prisma 7: timestamptz columns take/return a plain JS Date — no
+    // Temporal conversion needed (that's a Prisma 8-only change).
+    const contest = await prisma.contest.create({
+      data: {
+        name,
+        content,
+        time,
+        contestDate,
+        userId,
+      },
     });
 
     return returnResponse(res, true, StatusCodes.CREATED, "Contest created successfully", contest);
@@ -83,12 +78,16 @@ const getContests = async (req: Request, res: Response, next: NextFunction) => {
 
     const { userId } = parsed.data.query;
 
-    let query = DB.Contest.include("user");
+    const where: Prisma.ContestWhereInput = {};
     if (userId) {
-      query = query.where({ userId });
+      where.userId = userId;
     }
 
-    const contests = await query.orderBy((c) => c.createdAt.desc()).all();
+    const contests = await prisma.contest.findMany({
+      where,
+      include: { user: true },
+      orderBy: { createdAt: "desc" },
+    });
 
     return returnResponse(res, true, StatusCodes.OK, "Contests fetched", contests);
   } catch (error) {
@@ -106,10 +105,11 @@ const getMyContests = async (req: Request, res: Response, next: NextFunction) =>
     // userId comes from the authenticated session, not a query param — a
     // client can't pass ?userId=<someone-else> to list someone else's
     // contests under "my contests".
-    const contests = await DB.Contest.where({ userId })
-      .include("participants")
-      .orderBy((c) => c.createdAt.desc())
-      .all();
+    const contests = await prisma.contest.findMany({
+      where: { userId },
+      include: { participants: true },
+      orderBy: { createdAt: "desc" },
+    });
 
     return returnResponse(res, true, StatusCodes.OK, "Your contests fetched", contests);
   } catch (error) {
@@ -132,10 +132,13 @@ const getContestById = async (req: Request, res: Response, next: NextFunction) =
 
     const { id } = parsed.data.params;
 
-    const contest = await DB.Contest.where({ id })
-      .include("user")
-      .include("participants", (p) => p.include("user"))
-      .first();
+    const contest = await prisma.contest.findFirst({
+      where: { id },
+      include: {
+        user: true,
+        participants: { include: { user: true } },
+      },
+    });
 
     if (!contest) {
       return returnResponse(res, false, StatusCodes.NOT_FOUND, "Contest not found");
@@ -174,18 +177,18 @@ const joinContest = async (req: Request, res: Response, next: NextFunction) => {
 
     const contestId = parsed.data.params.id;
 
-    const contest = await DB.Contest.where({ id: contestId }).first();
+    const contest = await prisma.contest.findFirst({ where: { id: contestId } });
     if (!contest) {
       return returnResponse(res, false, StatusCodes.NOT_FOUND, "Contest not found");
     }
 
     try {
-      const participant = await DB.ContestParticipant.create({ contestId, userId });
+      const participant = await prisma.contestParticipant.create({ data: { contestId, userId } });
       return returnResponse(res, true, StatusCodes.CREATED, "Joined contest successfully", participant);
     } catch (error) {
-      // Prisma 8 has no P2002: a unique violation surfaces as a DB-driver
-      // error with sqlState "23505" on PostgreSQL (or MongoDB code 11000).
-      if ((error as { sqlState?: string }).sqlState === "23505") {
+      // Prisma 7: unique constraint violations throw
+      // PrismaClientKnownRequestError with code "P2002".
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
         return returnResponse(res, false, StatusCodes.CONFLICT, "Already joined this contest");
       }
       throw error;
@@ -215,12 +218,14 @@ const leaveContest = async (req: Request, res: Response, next: NextFunction) => 
 
     const contestId = parsed.data.params.id;
 
-    // Prisma 8: .delete() returns the deleted record, or null if nothing
-    // matched — it no longer throws P2025. Check the return value instead
-    // of catching an error code.
-    const deleted = await DB.ContestParticipant.where({ contestId, userId }).delete();
+    // Prisma 7's .delete() needs a unique where and throws P2025 if nothing
+    // matches. contestId+userId isn't a single unique field here, so use
+    // deleteMany and check the affected count instead.
+    const { count } = await prisma.contestParticipant.deleteMany({
+      where: { contestId, userId },
+    });
 
-    if (!deleted) {
+    if (count === 0) {
       return returnResponse(res, false, StatusCodes.NOT_FOUND, "Not a participant");
     }
 
@@ -251,7 +256,7 @@ const deleteContest = async (req: Request, res: Response, next: NextFunction) =>
 
     const { id } = parsed.data.params;
 
-    const contest = await DB.Contest.where({ id }).first();
+    const contest = await prisma.contest.findFirst({ where: { id } });
     if (!contest) {
       return returnResponse(res, false, StatusCodes.NOT_FOUND, "Contest not found");
     }
@@ -260,7 +265,7 @@ const deleteContest = async (req: Request, res: Response, next: NextFunction) =>
       return returnResponse(res, false, StatusCodes.FORBIDDEN, "Not authorized");
     }
 
-    await DB.Contest.where({ id }).delete();
+    await prisma.contest.delete({ where: { id } });
 
     return returnResponse(res, true, StatusCodes.OK, "Contest deleted");
   } catch (error) {
@@ -297,22 +302,15 @@ const getAllContests = async (
 
     const skip = (page - 1) * limit;
 
-    const query = DB.Contest;
-
-    const contests = await query
-      .include("user")
-      .orderBy((c) =>
-        sortBy === "asc"
-          ? c.createdAt.asc()
-          : c.createdAt.desc()
-      )
-      .limit(limit)
-      .offset(skip)
-      .all();
-
-    const { total } = await query.aggregate((a) => ({
-      total: a.count(),
-    }));
+    const [contests, total] = await Promise.all([
+      prisma.contest.findMany({
+        include: { user: true },
+        orderBy: { createdAt: sortBy === "asc" ? "asc" : "desc" },
+        take: limit,
+        skip,
+      }),
+      prisma.contest.count(),
+    ]);
 
     return returnResponse(
       res,
