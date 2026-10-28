@@ -7,7 +7,7 @@ import { createParagraphSchema, resultQuerySchema, submitResultBodySchema } from
 
 import { returnResponse } from "../../../helpers/return-response.js";
 import { StatusCodes } from "http-status-codes";
-import { sortOrder } from "../../../utils/practice/utils.practice.js";
+
 import { PracticeServices } from "./practice.service.js";
 
 const addPracticeContent = async (
@@ -20,7 +20,7 @@ const addPracticeContent = async (
     if (!userId) {
       return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "User unauthorize")
     }
-    console.log(req.body , '[BODY]')
+    console.log(req.body, '[BODY]')
 
     const result = createParagraphSchema.safeParse(req.body);
 
@@ -96,7 +96,7 @@ const practiceAllTopic = async (req: Request, res: Response, next: NextFunction)
 const getPracticeParagraph = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id: paragraphId } = req.params as { id: string };
-    console.log( paragraphId)
+    console.log(paragraphId)
 
     if (!paragraphId) {
       return returnResponse(res, false, StatusCodes.BAD_REQUEST, "Not found paragraph id")
@@ -142,7 +142,7 @@ const submitPracticeResult = async (req: Request, res: Response, next: NextFunct
       parsed.data,
       userId
     );
-    console.log(result , "[ RESULT ]  ");
+    console.log(result, "[ RESULT ]  ");
 
     return returnResponse(res, true, StatusCodes.CREATED, "Result saved", result);
   } catch (error) {
@@ -180,7 +180,13 @@ const practiceLeaderboard = async (req: Request, res: Response, next: NextFuncti
     // [{ wpm: "desc" }, { accuracy: "desc" }, { timeTaken: "asc" }, { createdAt: "asc" }, { id: "asc" }]
     const rows = await prisma.result.findMany({
       where,
-      orderBy: sortOrder,
+      orderBy: [
+        { wpm: "desc" },
+        { accuracy: "desc" },
+        { timeTaken: "asc" },
+        { createdAt: "asc" },
+        { id: "asc" },
+      ],
       select: { id: true, userId: true, wpm: true, accuracy: true, timeTaken: true, createdAt: true },
       take: limit + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
@@ -193,9 +199,9 @@ const practiceLeaderboard = async (req: Request, res: Response, next: NextFuncti
 
     const users = userIds.length
       ? await prisma.user.findMany({
-          where: { id: { in: userIds } },
-          select: { id: true, name: true },
-        })
+        where: { id: { in: userIds } },
+        select: { id: true, name: true },
+      })
       : [];
 
     const nameById = new Map(users.map((u) => [u.id, u.name]));
@@ -272,5 +278,5 @@ const deletePracticeContent = async (
 };
 
 export const practiceController = {
-  practiceAllTopic, addPracticeContent, getPracticeParagraph, submitPracticeResult, practiceLeaderboard,deletePracticeContent
+  practiceAllTopic, addPracticeContent, getPracticeParagraph, submitPracticeResult, practiceLeaderboard, deletePracticeContent
 }
