@@ -4,7 +4,7 @@ import type { Response, Request, NextFunction } from "express";
 import bcrypt from "bcrypt";
 import { ZodError } from "zod";
 import type { Prisma } from "@prisma/client";
-import { createUserSchema, updateUserRoleSchema, userQuerySchema, type User } from "./user.validation.js";
+import { createUserSchema, updateUserRoleSchema, userQuerySchema} from "./user.validation.js";
 import { StatusCodes } from "http-status-codes";
 import { returnResponse } from "../../../helpers/return-response.js";
 import { generateOtp } from "../../../helpers/otp-code.js";
