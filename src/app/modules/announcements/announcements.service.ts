@@ -1,4 +1,4 @@
-import { DB } from "../../../lib/prisma.db.js";
+import { prisma } from "../../../lib/prisma.db.js";
 import type { z } from "zod";
 import type { createAnnouncementSchema, updateAnnouncementSchema } from "./announcements.validation.js";
 
@@ -6,10 +6,11 @@ const createData = async (
   data: z.infer<typeof createAnnouncementSchema>,
   userId: string
 ) => {
-
-  return DB.Announcement.create({
-    ...data,
-    userId,
+  return prisma.announcement.create({
+    data: {
+      ...data,
+      userId,
+    },
   });
 };
 
@@ -23,21 +24,19 @@ const getAllAnnouncements = async ({
 } = {}) => {
   const offset = (page - 1) * limit;
 
-  const query = DB.Announcement.where({ isActive: true });
+  const where = { isActive: true };
 
-  const [announcements, countResult] = await Promise.all([
-    query
-      .orderBy((a) => a.createdAt.desc())
-      .limit(limit)
-      .offset(offset)
-      .all(),
+  const [announcements, total] = await Promise.all([
+    prisma.announcement.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      skip: offset,
+    }),
 
-    query.aggregate((a) => ({
-      total: a.count(),
-    })),
+    prisma.announcement.count({ where }),
   ]);
 
-  const total = countResult.total;
   const totalPages = Math.ceil(total / limit);
 
   return {
@@ -58,21 +57,21 @@ const updateAnnouncement = async (
   id: string,
   data: z.infer<typeof updateAnnouncementSchema>
 ) => {
-  const existing = await DB.Announcement.where({ id }).first();
+  const existing = await prisma.announcement.findFirst({ where: { id } });
   if (!existing) return null;
 
   const updateData: Record<string, unknown> = {};
   if (data.message !== undefined) updateData.message = data.message;
   if (data.isActive !== undefined) updateData.isActive = data.isActive;
 
-  return DB.Announcement.where({ id }).update(updateData);
+  return prisma.announcement.update({ where: { id }, data: updateData });
 };
 
 const deleteAnnouncement = async (id: string) => {
-  const existing = await DB.Announcement.where({ id }).first();
+  const existing = await prisma.announcement.findFirst({ where: { id } });
   if (!existing) return null;
 
-  return DB.Announcement.where({ id }).delete();
+  return prisma.announcement.delete({ where: { id } });
 };
 
 export const AnnouncementServices = {
