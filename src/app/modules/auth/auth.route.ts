@@ -2,9 +2,11 @@
 
 import { Router } from "express";
 import { authController } from "./auth.controller.js";
-import { verifyToken } from "../../middleware/jwt-token.js";
+import {  type AuthPayload } from "../../middleware/jwt-token.js";
 import jwt from "jsonwebtoken";
 import passport from "./../../../config/passport.js"
+import { setCookies } from "../../../helpers/set-cookies.js";
+
 
 const router = Router();
 
@@ -30,27 +32,30 @@ router.get(
     session: false,
     failureRedirect: `${process.env.FRONTEND_URL}/login?error=google_auth_failed`,
   }),
-  (req, res) => {
-    const user = req.user;
+   (req, res, next) => {
+  try {
+    const user = req.user as AuthPayload;
 
-    if (!user || !("id" in user) || typeof user.id !== "string") {
-      return res.redirect(
-        `${process.env.FRONTEND_URL}/login?error=invalid_google_user`
-      );
+    if (!user?.userId) {
+      return res.redirect(`${process.env.FRONTEND_URL}/login?error=invalid_google_user`);
     }
-// CARE
-    const token = jwt.sign(
-      { sub: user.id },
-      process.env.JWT_SECRET!,
-      { expiresIn: "7d" }
-    );
 
-    return res.redirect(
-      `${process.env.FRONTEND_URL}/auth/callback?token=${encodeURIComponent(token)}`
-    );
+    const accessToken = jwt.sign(user, process.env.JWT_SECRET_FOR_ACCESS_TOKEN as string, {
+      expiresIn: "15m",
+    });
+    const refreshToken = jwt.sign(user, process.env.JWT_SECRET_FOR_REFRESH_TOKEN as string, {
+      expiresIn: "15d",
+    });
+
+    setCookies(res, "accessToken", accessToken, 15 * 60 * 1000);
+    setCookies(res, "refreshToken", refreshToken, 15 * 24 * 60 * 60 * 1000);
+
+    return res.redirect(`${process.env.FRONTEND_URL}/auth/callback`);
+  } catch (error) {
+    next(error);
   }
+}
 );
-
 
 
 export const authRouter = router;
