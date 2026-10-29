@@ -20,17 +20,27 @@ const app = express();
 
 
 
+
+
+// CORS CONFIG
+
+
+app.use(
+  cors({
+    origin: [
+      "http://localhost:3000",
+      "https://typerush-client.vercel.app",
+    ],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  })
+);
+
 // EXTRACT JSON
 app.use(express.json());
 // COOKIE PARSER
 app.use(cookieParser());
-
-// CORS CONFIG
-cors({
-  origin: ["http://localhost:3000", "https://typerush-client.vercel.app"],
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  credentials: true,
-})
 
 // API 
 app.use('/api/v1/users', userRouter);
