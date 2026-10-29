@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 
 import { Router } from "express";
 import { authController } from "./auth.controller.js";
@@ -22,16 +23,34 @@ router.get(
   passport.authenticate("google", { scope: ["profile", "email"], session: false })
 );
 
+
 router.get(
   "/google/callback",
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-  passport.authenticate("google", { session: false, failureRedirect: "/login/failed" }),
+  passport.authenticate("google", {
+    session: false,
+    failureRedirect: `${process.env.FRONTEND_URL}/login?error=google_auth_failed`,
+  }),
   (req, res) => {
-    const user = req.user as { userId: string };
-    const token = jwt.sign({ sub: user.userId }, process.env.JWT_SECRET!, { expiresIn: "7d" });
-    res.redirect(`${process.env.FRONTEND_URL}/auth/callback?token=${token}`);
+    const user = req.user;
+
+    if (!user || !("id" in user) || typeof user.id !== "string") {
+      return res.redirect(
+        `${process.env.FRONTEND_URL}/login?error=invalid_google_user`
+      );
+    }
+// CARE
+    const token = jwt.sign(
+      { sub: user.id },
+      process.env.JWT_SECRET!,
+      { expiresIn: "7d" }
+    );
+
+    return res.redirect(
+      `${process.env.FRONTEND_URL}/auth/callback?token=${encodeURIComponent(token)}`
+    );
   }
 );
+
 
 
 export const authRouter = router;
