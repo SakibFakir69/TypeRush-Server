@@ -26,14 +26,11 @@ app.use(express.json());
 app.use(cookieParser());
 
 // CORS CONFIG
-app.use(
-  cors({
-    origin: ["http://localhost:3000" , "*"],
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    credentials: true,
-  })
-);
-
+cors({
+  origin: ["http://localhost:3000", "https://typerush-client.vercel.app"],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  credentials: true,
+})
 
 // API 
 app.use('/api/v1/users', userRouter);
