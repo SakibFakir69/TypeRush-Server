@@ -22,7 +22,12 @@ passport.use(
         let user = await prisma.user.findFirst({ where: { googleId: profile.id } });
 
         if (user) {
-          return done(null, user);
+          return done(null, {
+            userId: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+          });
         }
 
         // 2. Check if email already exists — link the account
@@ -38,7 +43,12 @@ passport.use(
             },
           });
 
-          return done(null, user ?? false);
+          return done(null, {
+            userId: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+          });
         }
 
         // 3. Create new user (now correctly reachable — runs when no match at all)
@@ -54,7 +64,12 @@ passport.use(
           },
         });
 
-        return done(null, user ?? false);
+        return done(null, {
+          userId: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+        });
       } catch (error) {
         console.error("Google OAuth error:", error);
         return done(error instanceof Error ? error : new Error("Google authentication failed"));
