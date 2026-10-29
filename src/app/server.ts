@@ -1,8 +1,9 @@
 
 import type { Server } from "node:http";
-import { setupSwagger } from "../../docs/swagger.config.js";
+
 import { mainServerApp } from "./index.js";
 import { redis } from "../config/redis-config.js";
+import { setupSwagger } from "../docs/swagger.config.js";
 
 
 if (!process.env.PORT) {
