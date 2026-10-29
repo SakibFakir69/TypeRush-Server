@@ -36,7 +36,7 @@ const userLogout = (req: Request, res: Response, next: NextFunction) => {
   try {
     const options = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "prod", 
+      secure: process.env.NODE_ENV === "production", 
       sameSite: "lax" as const,
       path: "/",
     };
