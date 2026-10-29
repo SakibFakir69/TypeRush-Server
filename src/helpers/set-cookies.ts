@@ -6,8 +6,8 @@ import type { Response } from "express";
 
 
 
-export const setCookies = (res: Response, name: string, value: string,time?:number) => {
-    const isProd = process.env.NODE_ENV === "prod";
+export const setCookies = (res: Response, name: string, value: string, time?: number) => {
+    const isProd = process.env.NODE_ENV !== "development";
 
     if (!name || name === "") {
         return returnResponse(res, false, StatusCodes.BAD_REQUEST, "Please provide cookie name");
@@ -21,8 +21,8 @@ export const setCookies = (res: Response, name: string, value: string,time?:numb
     res.cookie(name, value, {
         httpOnly: true,
         secure: isProd,
-          sameSite: isProd ? "none" : "lax",
-        maxAge:time
+        sameSite: isProd ? "none" : "lax",
+        maxAge: time
     })
 
 
