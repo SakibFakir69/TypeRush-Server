@@ -30,6 +30,7 @@ app.use(
     origin: [
       "http://localhost:3000",
       "https://typerush-client.vercel.app",
+      "https://typerush-admin.vercel.app",
     ],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
