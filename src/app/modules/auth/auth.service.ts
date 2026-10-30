@@ -46,17 +46,20 @@ const login = async (email: string, password: string) => {
 const issueAccessToken = async (email: string) => {
   const user = await prisma.user.findFirst({ where: { email } });
 
+  if (!user) {
+    throw new AuthError(401, "User not found");
+  }
+
   const payload = {
-    userId: user?.id,
-    email: user?.email,
-    name: user?.name,
+    userId: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,   
   };
 
-  const accessToken = jwt.sign(payload, process.env.JWT_SECRET_FOR_ACCESS_TOKEN as string, {
+  return jwt.sign(payload, process.env.JWT_SECRET_FOR_ACCESS_TOKEN as string, {
     expiresIn: "15m",
   });
-
-  return accessToken;
 };
 
 const requestPasswordReset = async (rawEmail: string) => {

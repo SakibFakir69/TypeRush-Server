@@ -3,6 +3,8 @@ import { returnResponse } from "../../../helpers/return-response.js";
 import { StatusCodes } from "http-status-codes";
 import { setCookies } from "../../../helpers/set-cookies.js";
 import { AuthServices } from "./auth.service.js";
+import jwt from "jsonwebtoken";
+import type { AuthPayload } from "../../middleware/jwt-token.js";
 
 const userLogin = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -49,16 +51,31 @@ const userLogout = (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
+
+
 const refreshToken = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { refreshToken } = req.body as { refreshToken: string };
+    const token = req.cookies?.refreshToken as string | undefined;
 
-    if (!refreshToken) {
-      return returnResponse(res, false, StatusCodes.BAD_REQUEST, "Please provide refresh token");
+    if (!token) {
+      return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "No refresh token provided");
     }
 
-    const email = req.user?.email as string;
-    const accessToken = await AuthServices.issueAccessToken(email);
+    let payload: AuthPayload;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      payload = jwt.verify(
+        token,
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+        process.env.JWT_SECRET_FOR_REFRESH_TOKEN as string
+      ) as AuthPayload;
+    } catch {
+      return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "Invalid or expired refresh token");
+    }
+
+    const accessToken = await AuthServices.issueAccessToken(payload.email);
+
+    setCookies(res, "accessToken", accessToken, 15 * 60 * 1000);
 
     return returnResponse(res, true, StatusCodes.CREATED, "Access token created", { accessToken });
   } catch (error) {
