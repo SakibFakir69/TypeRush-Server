@@ -15,6 +15,7 @@ import cookieParser from "cookie-parser";
 import { contestRouter } from "./modules/contest/contest.route.js";
 import { adminRouter } from "./modules/admin/admin.route.js";
 import { announcementRouter } from "./modules/announcements/announcements.route.js";
+import { analyticsRouter } from "./modules/analytics/analytics.route.js";
 
 const app = express();
 
@@ -50,6 +51,8 @@ app.use('/api/v1/practices', practiceRoutes)
 app.use('/api/v1/contests', contestRouter)
 app.use('/api/v1/admin', adminRouter)
 app.use('/api/v1/announcements', announcementRouter)
+app.use('/api/v1/analytics', analyticsRouter) 
+
 
 app.get('/', (res: Response, req: Request) => {
 

@@ -49,6 +49,8 @@ model Result {
 
   userId      String?
   user        User?     @relation(fields: [userId], references: [id])
+    contestId   String?                                             
+  contest     Contest?  @relation(fields: [contestId], references: [id])  
 
   wpm         Float
   accuracy    Float
@@ -58,6 +60,7 @@ model Result {
 
   @@index([userId])
   @@index([paragraphId])
+  @@index([contestId])
 }
 
 model Paragraph {
@@ -86,6 +89,7 @@ model Contest {
   userId       String?
   user         User?                @relation(fields: [userId], references: [id])
   participants ContestParticipant[]
+  results Result[]
 }
 
 // after contest time over no one can particapant
