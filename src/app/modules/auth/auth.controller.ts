@@ -5,6 +5,7 @@ import { setCookies } from "../../../helpers/set-cookies.js";
 import { AuthServices } from "./auth.service.js";
 import jwt from "jsonwebtoken";
 import type { AuthPayload } from "../../middleware/jwt-token.js";
+import { redis } from "../../../config/redis-config.js";
 
 const userLogin = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -52,6 +53,65 @@ const userLogout = (req: Request, res: Response, next: NextFunction) => {
 };
 
 
+
+/**
+ * Redeem the single-use code created by the Google OAuth callback.
+ *
+ * The app calls this through its same-origin `/backend` proxy, so the
+ * Set-Cookie headers below are stored against the app origin — the origin the
+ * app actually reads its session from.
+ */
+const exchangeGoogleCode = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { code } = req.body as { code?: unknown };
+
+    if (typeof code !== "string" || !code) {
+      return returnResponse(res, false, StatusCodes.BAD_REQUEST, "Sign-in code required");
+    }
+
+    const key = `oauth:handoff:${code}`;
+    const raw = await redis.get(key);
+    // Single use — burn it even if the payload turns out to be malformed.
+    if (raw) await redis.del(key);
+
+    if (!raw) {
+      return returnResponse(
+        res,
+        false,
+        StatusCodes.UNAUTHORIZED,
+        "Invalid or expired sign-in code"
+      );
+    }
+
+    let tokens: { accessToken?: unknown; refreshToken?: unknown };
+    try {
+      tokens = JSON.parse(raw) as { accessToken?: unknown; refreshToken?: unknown };
+    } catch {
+      return returnResponse(
+        res,
+        false,
+        StatusCodes.UNAUTHORIZED,
+        "Invalid or expired sign-in code"
+      );
+    }
+
+    if (typeof tokens.accessToken !== "string" || typeof tokens.refreshToken !== "string") {
+      return returnResponse(
+        res,
+        false,
+        StatusCodes.UNAUTHORIZED,
+        "Invalid or expired sign-in code"
+      );
+    }
+
+    setCookies(res, "accessToken", tokens.accessToken, 15 * 60 * 1000);
+    setCookies(res, "refreshToken", tokens.refreshToken, 15 * 24 * 60 * 60 * 1000);
+
+    return returnResponse(res, true, StatusCodes.OK, "Google sign-in complete");
+  } catch (error) {
+    next(error);
+  }
+};
 
 const refreshToken = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -179,5 +239,5 @@ const verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
 };
 
 export const authController = {
-  userLogin, userLogout, refreshToken, forgotPassword, resetPassword, verifyEmail, resendVerifyOtp, verifyOtp
+  userLogin, userLogout, refreshToken, exchangeGoogleCode, forgotPassword, resetPassword, verifyEmail, resendVerifyOtp, verifyOtp
 };
