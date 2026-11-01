@@ -1,11 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
 import { Router } from "express";
+import { randomUUID } from "node:crypto";
 import { authController } from "./auth.controller.js";
 import {  type AuthPayload } from "../../middleware/jwt-token.js";
 import jwt from "jsonwebtoken";
 import passport from "./../../../config/passport.js"
 import { setCookies } from "../../../helpers/set-cookies.js";
+import { redis } from "../../../config/redis-config.js";
+import { OAUTH_HANDOFF_TTL } from "../../../const/auth.const.js";
 
 
 const router = Router();
@@ -13,6 +16,7 @@ const router = Router();
 router.post('/login', authController.userLogin);
 router.post('/logout', authController.userLogout);
 router.post('/refresh', authController.refreshToken);
+router.post('/google/exchange', authController.exchangeGoogleCode);
 router.post('/verify', authController.verifyOtp);
 router.post('/forgot-password', authController.forgotPassword);
 router.post('/reset-password', authController.resetPassword);
@@ -32,7 +36,7 @@ router.get(
     session: false,
     failureRedirect: `${process.env.FRONTEND_URL}/login?error=google_auth_failed`,
   }),
-   (req, res, next) => {
+   async (req, res, next) => {
   try {
     const user = req.user as AuthPayload;
 
@@ -50,7 +54,22 @@ router.get(
     setCookies(res, "accessToken", accessToken, 15 * 60 * 1000);
     setCookies(res, "refreshToken", refreshToken, 15 * 24 * 60 * 60 * 1000);
 
-    return res.redirect(`${process.env.FRONTEND_URL}/auth/callback`);
+    // This callback runs on the API origin, but the app reads its session
+    // cookies on the app origin. Hand the session over with a single-use code
+    // that the app redeems through its same-origin /backend proxy, so the
+    // cookies are written on the origin the app actually uses.
+    const handoffCode = randomUUID();
+    await redis.set(
+      `oauth:handoff:${handoffCode}`,
+      JSON.stringify({ accessToken, refreshToken }),
+      "EX",
+      OAUTH_HANDOFF_TTL
+    );
+
+    res.set("Cache-Control", "no-store");
+    return res.redirect(
+      `${process.env.FRONTEND_URL}/auth/callback?code=${handoffCode}`
+    );
   } catch (error) {
     next(error);
   }
