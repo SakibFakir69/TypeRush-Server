@@ -45,3 +45,24 @@ export const deleteContestSchema = z.object({
     id: z.string().uuid(),
   }),
 });
+
+
+export const submitContestResultSchema = z.object({
+  params: z.object({
+    id: z.string().uuid(),
+  }),
+  body: z.object({
+    wpm: z.number().min(0),
+    accuracy: z.number().min(0).max(100),
+    errors: z.number().int().min(0),
+    timeTaken: z.number().min(0),
+  }),
+});
+
+
+
+// Inferred types consumed by contest.service.ts
+export type CreateContestBody = z.infer<typeof createContestSchema>["body"];
+export type GetContestsQuery = z.infer<typeof getContestsQuerySchema>["query"];
+export type GetContestsQueryAll = z.infer<typeof getContestsQuerySchemaAll>["query"];
+export type SubmitContestResultBody = z.infer<typeof submitContestResultSchema>["body"];
