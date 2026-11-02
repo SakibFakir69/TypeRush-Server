@@ -45,7 +45,7 @@ model User {
 model Result {
   id          String    @id @default(uuid())
   paragraphId String
-  paragraph   Paragraph @relation(fields: [paragraphId], references: [id])
+  paragraph   Paragraph? @relation(fields: [paragraphId], references: [id])
 
   userId      String?
   user        User?     @relation(fields: [userId], references: [id])
