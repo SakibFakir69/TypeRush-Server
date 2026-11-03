@@ -24,3 +24,13 @@ export const registerLimiter = rateLimit({
     returnResponse(res, false, StatusCodes.TOO_MANY_REQUESTS, "Too many accounts created, try again later");
   },
 });
+
+export const submitResultLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 min
+  limit: 5,             // max 5 submissions per minute per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    returnResponse(res, false, StatusCodes.TOO_MANY_REQUESTS, "Too many submissions, slow down");
+  },
+});
