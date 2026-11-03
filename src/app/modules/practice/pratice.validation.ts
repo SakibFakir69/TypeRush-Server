@@ -19,7 +19,10 @@ export type CreateParagraphInput = z.infer<typeof createParagraphSchema>;
 // the server takes it from the auth session, never from the client.
 export const submitResultBodySchema = z
   .object({
-    paragraphId: z.string().uuid(),
+    // Optional: arena runs (words / quotes / custom text) have no admin
+    // passage behind them. The column is already nullable, so a free-typed
+    // run can still be recorded and counted in the user's stats.
+    paragraphId: z.string().uuid().optional(),
     wpm: z.number().nonnegative().finite(),
     accuracy: z.number().min(0).max(100).finite(),
     errors: z.number().int().nonnegative(),
