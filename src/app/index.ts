@@ -1,7 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 import dotenv from "dotenv"
 dotenv.config();
 import 'temporal-polyfill/full/global';
 import express, { type Request, type Response } from "express"
+import helmet from "helmet";
 import cors from "cors";
 import {
     StatusCodes,
@@ -16,16 +18,15 @@ import { contestRouter } from "./modules/contest/contest.route.js";
 import { adminRouter } from "./modules/admin/admin.route.js";
 import { announcementRouter } from "./modules/announcements/announcements.route.js";
 import { analyticsRouter } from "./modules/analytics/analytics.route.js";
+import { globalLimiter } from "./middleware/rate-limit.middleware.js";
 
 const app = express();
 
 
 
-
-
+// SECURITY HEADERS
+app.use(helmet());
 // CORS CONFIG
-
-
 app.use(
   cors({
     origin: [
@@ -38,6 +39,9 @@ app.use(
     credentials: true,
   })
 );
+
+// GLOBAL RATE LIMITER
+app.use(globalLimiter)
 
 // EXTRACT JSON
 app.use(express.json());
@@ -54,7 +58,7 @@ app.use('/api/v1/announcements', announcementRouter)
 app.use('/api/v1/analytics', analyticsRouter) 
 
 
-app.get('/', (res: Response, req: Request) => {
+app.get('/', (req: Request, res: Response)  => {
 
     return res.status(StatusCodes.OK).json({
         "message": "Your Server now running",

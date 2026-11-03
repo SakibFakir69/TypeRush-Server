@@ -9,11 +9,12 @@ import passport from "./../../../config/passport.js"
 import { setCookies } from "../../../helpers/set-cookies.js";
 import { redis } from "../../../config/redis-config.js";
 import { OAUTH_HANDOFF_TTL } from "../../../const/auth.const.js";
+import { loginLimiter } from "../../middleware/rate-limit.middleware.js";
 
 
 const router = Router();
 
-router.post('/login', authController.userLogin);
+router.post('/login',loginLimiter, authController.userLogin);
 router.post('/logout', authController.userLogout);
 router.post('/refresh', authController.refreshToken);
 router.post('/google/exchange', authController.exchangeGoogleCode);
