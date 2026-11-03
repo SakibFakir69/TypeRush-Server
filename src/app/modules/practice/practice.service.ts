@@ -45,6 +45,9 @@ const submitPracticeResult = async (
     userId,
     // Arena runs (words / quotes / custom text) have no passage behind them.
     paragraphId: data.paragraphId ?? null,
+    // Older clients don't send the run length; fall back to the elapsed time
+    // so the row still lands in a sensible time category.
+    duration: data.duration ?? data.timeTaken ?? null,
   }
 
   const result = await prisma.result.create({ data: createData });

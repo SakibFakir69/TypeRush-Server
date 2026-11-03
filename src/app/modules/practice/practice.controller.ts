@@ -9,6 +9,7 @@ import { returnResponse } from "../../../helpers/return-response.js";
 import { StatusCodes } from "http-status-codes";
 
 import { PracticeServices } from "./practice.service.js";
+import { redis } from "../../../config/redis-config.js";
 
 const addPracticeContent = async (
   req: Request,
@@ -142,7 +143,8 @@ const submitPracticeResult = async (req: Request, res: Response, next: NextFunct
       parsed.data,
       userId
     );
-    console.log(result, "[ RESULT ]  ");
+
+    await redis.del(`user:stats:${userId}`); 
 
     return returnResponse(res, true, StatusCodes.CREATED, "Result saved", result);
   } catch (error) {
@@ -162,11 +164,16 @@ const practiceLeaderboard = async (req: Request, res: Response, next: NextFuncti
       });
     }
 
-    const { paragraphId, limit, cursor } = parsed.data;
+    const { paragraphId, limit, cursor, offset, duration } = parsed.data;
 
     const where: Prisma.ResultWhereInput = {};
     if (paragraphId) {
       where.paragraphId = paragraphId;
+    }
+    if (duration) {
+      // Time category. New runs store the length they picked; older rows only
+      // have the elapsed time, so a run that used the whole clock still counts.
+      where.OR = [{ duration }, { duration: null, timeTaken: duration }];
     }
 
     if (cursor) {
@@ -178,19 +185,31 @@ const practiceLeaderboard = async (req: Request, res: Response, next: NextFuncti
 
     // sortOrder must now be a plain Prisma orderBy array, e.g.
     // [{ wpm: "desc" }, { accuracy: "desc" }, { timeTaken: "asc" }, { createdAt: "asc" }, { id: "asc" }]
-    const rows = await prisma.result.findMany({
-      where,
-      orderBy: [
-        { wpm: "desc" },
-        { accuracy: "desc" },
-        { timeTaken: "asc" },
-        { createdAt: "asc" },
-        { id: "asc" },
-      ],
-      select: { id: true, userId: true, wpm: true, accuracy: true, timeTaken: true, createdAt: true },
-      take: limit + 1,
-      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-    });
+    const [total, rows] = await Promise.all([
+      prisma.result.count({ where }),
+      prisma.result.findMany({
+        where,
+        orderBy: [
+          { wpm: "desc" },
+          { accuracy: "desc" },
+          { timeTaken: "asc" },
+          { createdAt: "asc" },
+          { id: "asc" },
+        ],
+        select: {
+          id: true,
+          userId: true,
+          wpm: true,
+          accuracy: true,
+          timeTaken: true,
+          duration: true,
+          createdAt: true,
+        },
+        take: limit + 1,
+        // Cursor pages win; plain offset paging is the default for the UI.
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : { skip: offset }),
+      }),
+    ]);
 
     const hasNextPage = rows.length > limit;
     const page = hasNextPage ? rows.slice(0, limit) : rows;
@@ -211,14 +230,24 @@ const practiceLeaderboard = async (req: Request, res: Response, next: NextFuncti
       wpm: r.wpm,
       accuracy: r.accuracy,
       timeTaken: r.timeTaken,
+      /** Leaderboard category (run length in seconds). */
+      duration: r.duration ?? r.timeTaken,
       createdAt: r.createdAt,
     }));
 
     const nextCursor = hasNextPage ? page[page.length - 1]!.id : null;
+    const nextOffset = hasNextPage && !cursor ? offset + page.length : null;
 
     return returnResponse(res, true, StatusCodes.OK, "Leaderboard fetched", {
       data,
       nextCursor,
+      pagination: {
+        limit,
+        offset,
+        total,
+        hasMore: hasNextPage,
+        nextOffset,
+      },
     });
   } catch (error) {
     next(error);
@@ -276,6 +305,7 @@ const deletePracticeContent = async (
     next(error);
   }
 };
+
 const getUserStats = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId as string;
@@ -283,16 +313,26 @@ const getUserStats = async (req: Request, res: Response, next: NextFunction) => 
       return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "User unauthorized");
     }
 
+    const cacheKey = `user:stats:${userId}`;
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      return returnResponse(res, true, StatusCodes.OK, "Stats fetched", JSON.parse(cached));
+    }
+
     const stats = await PracticeServices.getUserStats(userId);
     if (!stats) {
       return returnResponse(res, false, StatusCodes.NOT_FOUND, "No results found yet");
     }
+  
+
+    await redis.set(cacheKey, JSON.stringify(stats), "EX", 60 * 5); 
 
     return returnResponse(res, true, StatusCodes.OK, "Stats fetched", stats);
   } catch (error) {
     next(error);
   }
 };
+
 export const practiceController = {
   practiceAllTopic, addPracticeContent, getPracticeParagraph, submitPracticeResult, practiceLeaderboard, deletePracticeContent,getUserStats
 }

@@ -27,6 +27,9 @@ export const submitResultBodySchema = z
     accuracy: z.number().min(0).max(100).finite(),
     errors: z.number().int().nonnegative(),
     timeTaken: z.number().int().nonnegative(),
+    // The run length the typist picked (15 / 30 / 60 s …). It is what the
+    // per-duration leaderboards group by. Optional for older clients.
+    duration: z.number().int().positive().optional(),
   })
   .strict();
 
@@ -43,7 +46,12 @@ export const resultQuerySchema = z.object({
   paragraphId: z.string().uuid().optional(),
   userId: z.string().uuid().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),
+  /** Cursor mode (existing) — takes precedence over offset when both are sent. */
   cursor: z.string().uuid().optional(),
+  /** Offset mode: page N of the leaderboard. */
+  offset: z.coerce.number().int().min(0).default(0),
+  /** Time category: only runs of this length (seconds), e.g. 60. */
+  duration: z.coerce.number().int().min(1).max(3600).optional(),
 });
 
 export type ResultQuery = z.infer<typeof resultQuerySchema>;

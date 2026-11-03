@@ -57,11 +57,14 @@ model Result {
   accuracy    Float
   errors      Int
   timeTaken   Int
+  /** Chosen run length in seconds (15 / 30 / 60 …) — leaderboard category. */
+  duration    Int?
   createdAt   DateTime  @default(now())
 
   @@index([userId])
   @@index([paragraphId])
   @@index([contestId])
+  @@index([duration])
 }
 
 model Paragraph {
