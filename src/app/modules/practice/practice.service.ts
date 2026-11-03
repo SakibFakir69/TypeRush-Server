@@ -41,7 +41,10 @@ const submitPracticeResult = async (
   userId: string
 ) => {
   const createData = {
-    ...data, userId
+    ...data,
+    userId,
+    // Arena runs (words / quotes / custom text) have no passage behind them.
+    paragraphId: data.paragraphId ?? null,
   }
 
   const result = await prisma.result.create({ data: createData });
