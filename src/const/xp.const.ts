@@ -1,0 +1,7 @@
+export const XP_RULES = {
+  PRACTICE_COMPLETE: 5,
+  CONTEST_JOIN: 10,
+  CONTEST_COMPLETE: 25,
+  PERSONAL_BEST: 20,
+  CONTEST_WIN: 100, 
+} as const;
