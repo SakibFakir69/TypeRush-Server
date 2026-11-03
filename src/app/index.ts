@@ -18,6 +18,7 @@ import { contestRouter } from "./modules/contest/contest.route.js";
 import { adminRouter } from "./modules/admin/admin.route.js";
 import { announcementRouter } from "./modules/announcements/announcements.route.js";
 import { analyticsRouter } from "./modules/analytics/analytics.route.js";
+import { globalLimiter } from "./middleware/rate-limit.middleware.js";
 
 const app = express();
 
@@ -39,6 +40,9 @@ app.use(
   })
 );
 
+// GLOBAL RATE LIMITER
+app.use(globalLimiter)
+
 // EXTRACT JSON
 app.use(express.json());
 // COOKIE PARSER
@@ -54,7 +58,7 @@ app.use('/api/v1/announcements', announcementRouter)
 app.use('/api/v1/analytics', analyticsRouter) 
 
 
-app.get('/', (res: Response, req: Request) => {
+app.get('/', (req: Request, res: Response)  => {
 
     return res.status(StatusCodes.OK).json({
         "message": "Your Server now running",

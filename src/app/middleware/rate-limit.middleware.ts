@@ -3,6 +3,7 @@ import rateLimit from "express-rate-limit";
 
 import { StatusCodes } from "http-status-codes";
 import { returnResponse } from "../../helpers/return-response.js";
+import type { RequestHandler } from "express";
 
 export const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, 
@@ -34,3 +35,11 @@ export const submitResultLimiter = rateLimit({
     returnResponse(res, false, StatusCodes.TOO_MANY_REQUESTS, "Too many submissions, slow down");
   },
 });
+
+
+export const globalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+}) as unknown as RequestHandler;
