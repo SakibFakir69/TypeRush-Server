@@ -32,6 +32,7 @@ model User {
   emailVerified Boolean              @default(false)
   avatarUrl     String?
   bio           String?
+  xp            Int                @default(0)
   role          UserRole             @default(USER)
   isDelete      Boolean              @default(false)
   createdAt     DateTime             @default(now())

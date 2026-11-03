@@ -276,7 +276,23 @@ const deletePracticeContent = async (
     next(error);
   }
 };
+const getUserStats = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user?.userId as string;
+    if (!userId) {
+      return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "User unauthorized");
+    }
 
+    const stats = await PracticeServices.getUserStats(userId);
+    if (!stats) {
+      return returnResponse(res, false, StatusCodes.NOT_FOUND, "No results found yet");
+    }
+
+    return returnResponse(res, true, StatusCodes.OK, "Stats fetched", stats);
+  } catch (error) {
+    next(error);
+  }
+};
 export const practiceController = {
-  practiceAllTopic, addPracticeContent, getPracticeParagraph, submitPracticeResult, practiceLeaderboard, deletePracticeContent
+  practiceAllTopic, addPracticeContent, getPracticeParagraph, submitPracticeResult, practiceLeaderboard, deletePracticeContent,getUserStats
 }

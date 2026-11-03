@@ -9,7 +9,9 @@ const router = Router();
 router.get("/topics", practiceController.practiceAllTopic);
 router.get("/results", practiceController.practiceLeaderboard);
 router.post("/results",verifyToken, practiceController.submitPracticeResult);
+router.get("/stats/me", verifyToken, practiceController.getUserStats);
 router.get("/:id", practiceController.getPracticeParagraph);
+
 
 
 export const practiceRoutes = router;
