@@ -1,7 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 import dotenv from "dotenv"
 dotenv.config();
 import 'temporal-polyfill/full/global';
 import express, { type Request, type Response } from "express"
+import helmet from "helmet";
 import cors from "cors";
 import {
     StatusCodes,
@@ -21,11 +23,9 @@ const app = express();
 
 
 
-
-
+// SECURITY HEADERS
+app.use(helmet());
 // CORS CONFIG
-
-
 app.use(
   cors({
     origin: [
