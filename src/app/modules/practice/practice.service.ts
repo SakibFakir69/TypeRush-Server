@@ -64,6 +64,19 @@ type UserStatsHistoryPoint = {
   tests: number;
 };
 
+/** One logged run, shown as a dashboard activity row. */
+type UserStatsRecentRun = {
+  id: string;
+  wpm: number;
+  accuracy: number;
+  timeTaken: number;
+  /** Chosen run length (15 / 30 / 60 …), null for legacy rows. */
+  duration: number | null;
+  /** Set when the run was posted to a contest. */
+  contestId: string | null;
+  createdAt: string;
+};
+
 type UserStats = {
   currentWpm: number;
   wpmChangePercent: number;
@@ -72,6 +85,12 @@ type UserStats = {
   accuracyChangePercent: number;
   sampleSize: number; // how many of the "last 10" actually existed
   totalTests: number;
+  /** Contests the user has joined. */
+  contestsJoined: number;
+  /** Runs posted to a contest. */
+  contestRuns: number;
+  /** The newest runs, newest first — powers the dashboard activity feed. */
+  recent: UserStatsRecentRun[];
   /** Per-day averages for the last 90 days, oldest first. */
   history: UserStatsHistoryPoint[];
 };
@@ -99,14 +118,31 @@ const getUserStats = async (userId: string): Promise<UserStats | null> => {
   // Progress curve: per-day averages for the last 90 days, so the client can
   // slice 7D / 30D / 90D without another round-trip.
   const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
-  const [historyRows, totalTests] = await Promise.all([
-    prisma.result.findMany({
-      where: { userId, createdAt: { gte: since } },
-      orderBy: { createdAt: "asc" },
-      select: { wpm: true, accuracy: true, createdAt: true },
-    }),
-    prisma.result.count({ where: { userId } }),
-  ]);
+  const [historyRows, totalTests, recentRows, contestsJoined, contestRuns] =
+    await Promise.all([
+      prisma.result.findMany({
+        where: { userId, createdAt: { gte: since } },
+        orderBy: { createdAt: "asc" },
+        select: { wpm: true, accuracy: true, createdAt: true },
+      }),
+      prisma.result.count({ where: { userId } }),
+      prisma.result.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+        take: 6,
+        select: {
+          id: true,
+          wpm: true,
+          accuracy: true,
+          timeTaken: true,
+          duration: true,
+          contestId: true,
+          createdAt: true,
+        },
+      }),
+      prisma.contestParticipant.count({ where: { userId } }),
+      prisma.result.count({ where: { userId, contestId: { not: null } } }),
+    ]);
 
   const buckets = new Map<
     string,
@@ -151,6 +187,17 @@ const getUserStats = async (userId: string): Promise<UserStats | null> => {
     accuracyChangePercent: pctChange(latest.accuracy, avgAccuracy),
     sampleSize: baseline.length,
     totalTests,
+    contestsJoined,
+    contestRuns,
+    recent: recentRows.map((row) => ({
+      id: row.id,
+      wpm: row.wpm,
+      accuracy: row.accuracy,
+      timeTaken: row.timeTaken,
+      duration: row.duration,
+      contestId: row.contestId,
+      createdAt: row.createdAt.toISOString(),
+    })),
     history,
   };
 };
