@@ -144,7 +144,7 @@ const submitPracticeResult = async (req: Request, res: Response, next: NextFunct
       userId
     );
 
-    await redis.del(`user:stats:${userId}`); 
+    await redis.del(`user:stats:v2:${userId}`); 
 
     return returnResponse(res, true, StatusCodes.CREATED, "Result saved", result);
   } catch (error) {
@@ -313,7 +313,7 @@ const getUserStats = async (req: Request, res: Response, next: NextFunction) => 
       return returnResponse(res, false, StatusCodes.UNAUTHORIZED, "User unauthorized");
     }
 
-    const cacheKey = `user:stats:${userId}`;
+    const cacheKey = `user:stats:v2:${userId}`;
     const cached = await redis.get(cacheKey);
     if (cached) {
       return returnResponse(res, true, StatusCodes.OK, "Stats fetched", JSON.parse(cached));
