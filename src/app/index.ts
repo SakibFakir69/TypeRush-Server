@@ -19,6 +19,7 @@ import { adminRouter } from "./modules/admin/admin.route.js";
 import { announcementRouter } from "./modules/announcements/announcements.route.js";
 import { analyticsRouter } from "./modules/analytics/analytics.route.js";
 import { globalLimiter } from "./middleware/rate-limit.middleware.js";
+import { uploadRouter } from "./modules/upload/upload.route.js";
 
 const app = express();
 
@@ -56,7 +57,7 @@ app.use('/api/v1/contests', contestRouter)
 app.use('/api/v1/admin', adminRouter)
 app.use('/api/v1/announcements', announcementRouter)
 app.use('/api/v1/analytics', analyticsRouter) 
-
+app.use('/api/v1/uploads', uploadRouter)
 
 app.get('/', (req: Request, res: Response)  => {
 
