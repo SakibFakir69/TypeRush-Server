@@ -39,7 +39,7 @@ export const submitResultLimiter = rateLimit({
 
 export const globalLimiter = rateLimit({
   windowMs: 60 * 1000,
-  limit: 100,
+  limit: 110,
   standardHeaders: true,
   legacyHeaders: false,
 }) as unknown as RequestHandler;
