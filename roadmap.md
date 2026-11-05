@@ -1,12 +1,12 @@
 
 
 
-1. work on announcements 
-2. work on user management api for user 
-3. performance prepare for big data
-3. test api
+1. work on features
+2. work on ui/ux
 
 
+
+# verse 1 v 1
 
 # org
 when in register or org need uni name 
