@@ -51,23 +51,52 @@ function receiveImage(req: Request, res: Response, next: NextFunction) {
   });
 }
 
+/**
+ * Upload an image. Because avatars are the only upload in the product, the
+ * signed-in user's `avatarUrl` is saved here as well — this is the endpoint the
+ * client already calls, so no second request is needed. `data.user` is included
+ * (and the root `url` kept) so older and newer callers both work.
+ */
 router.post(
   '/',
   verifyToken,
   receiveImage,
-  (req: Request, res: Response) => {
-    if (!req.file) {
-      return res
-        .status(StatusCodes.BAD_REQUEST)
-        .json({ message: "No file uploaded" });
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.file) {
+        return res
+          .status(StatusCodes.BAD_REQUEST)
+          .json({ message: "No file uploaded" });
+      }
+
+      const file = req.file as Express.Multer.File & { filename: string };
+      const userId = req.user?.userId;
+
+      const user = userId
+        ? await prisma.user.update({
+            where: { id: userId },
+            data: { avatarUrl: file.path },
+            select: {
+              id: true,
+              name: true,
+              fullName: true,
+              email: true,
+              avatarUrl: true,
+              xp: true,
+              country: true,
+              role: true,
+            },
+          })
+        : null;
+
+      return res.status(StatusCodes.CREATED).json({
+        url: file.path,
+        publicId: file.filename, // multer-storage-cloudinary sets public_id here
+        user,
+      });
+    } catch (error) {
+      next(error);
     }
-
-    const file = req.file as Express.Multer.File & { filename: string };
-
-    return res.status(StatusCodes.CREATED).json({
-      url: file.path,
-      publicId: file.filename, // multer-storage-cloudinary sets public_id here
-    });
   }
 );
 
