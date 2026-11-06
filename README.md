@@ -34,7 +34,8 @@ Express 5 + Prisma + PostgreSQL, deployed on Render. API docs are served by Swag
 | Runtime | Node.js 22 + TypeScript (ESM, `nodenext`) |
 | Framework | Express 5 |
 | Database | PostgreSQL via Prisma 7 (`@prisma/adapter-pg`) |
-| Cache / limits | Redis (`redis` + `ioredis`) behind `express-rate-limit` |
+| Cache / state | Redis (`ioredis`) — OTP codes, cooldowns, cached stats, active-user set, refresh-token revocation |
+| Rate limiting | `express-rate-limit` (in-memory store per instance) |
 | Auth | JWT access + refresh tokens in httpOnly cookies, bcrypt |
 | Google sign-in | `passport-google-oauth20` + authorization-code exchange |
 | Email | Brevo (`@getbrevo/brevo`) for OTP and password-reset codes |
@@ -62,8 +63,8 @@ Express app  ── helmet, CORS, JSON, cookies, global rate limit
    ├─ /api/v1/analytics      summary, timeseries, heartbeat
    └─ /api/v1/uploads        image upload → Cloudinary
         │
-        ├─▶ PostgreSQL (Prisma)
-        └─▶ Redis (rate-limit counters)
+        ├─▶ PostgreSQL (Prisma) — users, results, passages, contests
+        └─▶ Redis — OTP + cooldowns, stats cache, active users, token revocation
 ```
 
 Layer flow inside every module:
@@ -106,7 +107,7 @@ Dockerfile            multi-stage production image
 
 - Node.js 20+ (developed on Node 22)
 - PostgreSQL 14+
-- Redis (optional locally; rate limits degrade if absent)
+- Redis (required — the server throws on boot without `REDIS_URL`)
 - A Cloudinary account for uploads
 - A Brevo API key for OTP email
 
@@ -142,7 +143,7 @@ The image runs `prisma migrate deploy` before starting `dist/app/server.js`.
 | `JWT_SECRET_FOR_ACCESS_TOKEN` | Yes | Signs 15-minute access tokens. |
 | `JWT_SECRET_FOR_REFRESH_TOKEN` | Yes | Signs 15-day refresh tokens. |
 | `FRONTEND_URL` | Yes | Allowed origin and redirect base for Google/OAuth flows. |
-| `REDIS_URL` | Yes | Redis connection string for rate limiting. |
+| `REDIS_URL` | Yes | Redis connection string for OTP state, cooldowns, caches, and token revocation. |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_CALLBACK_URL` | Google sign-in | OAuth credentials. |
 | `BREVO_API_KEY` / `MAIL_FROM` | Email | OTP and reset-code delivery. |
 | `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET` | Uploads | Cloudinary credentials. The key needs the **upload/create** action. |
@@ -223,7 +224,7 @@ Base path: `/api/v1`. Interactive docs: `/docs`.
 | --- | --- | --- |
 | `GET/POST/DELETE` | `/admin/contests[/:id]` | Admin contest management. |
 | `POST` | `/admin/submit` | Add a practice passage. |
-| `DELETE` | `/admin/practices/:id` | Remove a passage. |
+| `DELETE` | `/admin/:id` | Remove a practice passage. |
 | `GET` | `/admin/users`, `/admin/users/:id` | List / read users. |
 | `PATCH` | `/admin/users/:id/role`, `/restore` | Change role, restore soft-deleted user. |
 | `DELETE` | `/admin/users/:id` | Soft delete a user. |
@@ -243,7 +244,8 @@ Responses use a consistent envelope: `{ success, message, data }` for success pa
 - `verifyToken` accepts the cookie or an `Authorization: Bearer` header, so scripts and Swagger work too.
 - The client's middleware refreshes the access token before rendering protected pages; `/auth/refresh` rotates it server-side.
 - Google sign-in exchanges a one-time authorization code, then issues the same cookie pair.
-- Passwords are hashed with bcrypt; OTP codes are short-lived and delivered through Brevo.
+- Passwords are hashed with bcrypt; OTP codes are short-lived, hashed, and stored in Redis with attempt counters and resend cooldowns.
+- Refresh tokens are tracked in Redis per user, so logout and re-login invalidate older sessions.
 
 ---
 
@@ -255,7 +257,7 @@ Responses use a consistent envelope: `{ success, message, data }` for success pa
 | `ORG` | Everything a user can do, plus create contests. |
 | `ADMIN` | Full admin surface: contests, passages, users, announcements. |
 
-Guards compose on routes, e.g. `router.post("/", verifyToken, verifyRole("ORG"), handler)`. A soft-deleted user (`isDelete`) is rejected by the token middleware.
+Guards compose on routes, e.g. `router.post("/", verifyToken, verifyRole("ORG"), handler)`. `verifyToken` reads the access token from the cookie first and falls back to `Authorization: Bearer`, so scripts and Swagger can call protected routes without a browser.
 
 ---
 
@@ -268,7 +270,7 @@ Guards compose on routes, e.g. `router.post("/", verifyToken, verifyRole("ORG"),
 | Signup | 1 hour | 30 attempts |
 | Result submit | 1 minute | 5 submissions |
 
-Counters live in Redis, so limits hold across Render instances.
+Limiters use `express-rate-limit`'s in-memory store, so counters are per process and reset on restart. Running more than one instance behind a load balancer would need a shared Redis store to keep the numbers accurate.
 
 ---
 
@@ -346,7 +348,8 @@ npx prisma migrate deploy
 | Upload returns `502` / `500` "unexpected status code - 403" | Cloudinary key lacks `create` permission. | Issue a key with upload rights and update Render's env vars. |
 | Login succeeds but protected calls return `401` | `JWT_SECRET_FOR_ACCESS_TOKEN` differs between instances, or cookies are blocked. | Use one secret everywhere; verify the client proxy forwards cookies. |
 | `P1001` / Prisma connection error | `DATABASE_URL` wrong or database asleep. | Check the connection string and provider limits. |
-| Rate limit errors in development | Redis counters shared across runs. | Flush the key prefix or point `REDIS_URL` at a local instance. |
+| `REDIS_URL is not set` on boot | Redis config is required at startup. | Provide a reachable Redis URL (local or managed). |
+| OTP or stats endpoints hang | Redis unreachable; OTP state and caches live there. | Check the Redis host/credentials and TLS prefix (`rediss://`). |
 | OTP emails never arrive | Brevo key or `MAIL_FROM` invalid. | Verify the sender domain and API key in Brevo. |
 | `Port number required` on boot | `PORT` missing. | Set `PORT` in `.env` or the platform environment. |
 
