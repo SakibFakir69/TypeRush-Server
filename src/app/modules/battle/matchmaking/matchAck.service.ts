@@ -3,24 +3,66 @@ import { prisma } from "../../../../lib/prisma.db.js";
 import { ablyRealtime } from "../../../../config/ably-config.js";
 import { enqueue } from "../../../../lib/matchmaking.redis.js";
 
-const ACK_TIMEOUT_MS = 5000;
+/**
+ * Both players have this long to show up. `ack` over realtime and a plain
+ * HTTP read of the match both count, so a blocked WebSocket cannot stop a race.
+ */
+const ACK_TIMEOUT_MS = 8000;
+
+type AckSession = {
+  userIds: [string, string];
+  acked: Set<string>;
+  listener: (msg: InboundMessage) => void;
+  timer: ReturnType<typeof setTimeout>;
+  done: boolean;
+};
+
+const sessions = new Map<string, AckSession>();
 
 export function awaitMatchAck(matchId: string, userIds: [string, string]) {
-  const acked = new Set<string>();
   const channel = ablyRealtime.channels.get(`match:${matchId}`);
 
   const listener = (msg: InboundMessage) => {
-    if (typeof msg.clientId === "string") {
-      acked.add(msg.clientId);
-    }
+    if (typeof msg.clientId === "string") markAcked(matchId, msg.clientId);
   };
 
   void channel.subscribe("ack", listener);
 
-  setTimeout(() => {
-    void channel.unsubscribe("ack", listener);
-    void resolveAck(matchId, userIds, acked);
-  }, ACK_TIMEOUT_MS);
+  sessions.set(matchId, {
+    userIds,
+    acked: new Set<string>(),
+    listener,
+    timer: setTimeout(() => {
+      void settleAck(matchId);
+    }, ACK_TIMEOUT_MS),
+    done: false,
+  });
+}
+
+/** Records a player as present; starts the race as soon as both are in. */
+export function markAcked(matchId: string, userId: string) {
+  const session = sessions.get(matchId);
+  if (!session || session.done) return;
+  if (!session.userIds.includes(userId)) return;
+
+  session.acked.add(userId);
+  if (session.userIds.every((id) => session.acked.has(id))) {
+    void settleAck(matchId);
+  }
+}
+
+async function settleAck(matchId: string) {
+  const session = sessions.get(matchId);
+  if (!session || session.done) return;
+
+  // Claim the session first so the timer and an ack cannot both settle it.
+  session.done = true;
+  sessions.delete(matchId);
+  clearTimeout(session.timer);
+
+  const channel = ablyRealtime.channels.get(`match:${matchId}`);
+  channel.unsubscribe("ack", session.listener);
+  await resolveAck(matchId, session.userIds, session.acked);
 }
 
 async function resolveAck(

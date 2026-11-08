@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { prisma } from "../../../../lib/prisma.db.js";
 import { ablyClient } from "../../../../config/ably-config.js";
+import { markAcked } from "../matchmaking/matchAck.service.js";
 
 /** Everyone starts at 100 and moves in whole points. */
 const K_FACTOR = 24;
@@ -114,6 +115,11 @@ export async function getMatchForUser(matchId: string, userId: string) {
     include: matchInclude,
   });
   if (!match) return null;
+
+  // Reading the match proves the player is in the room, so a client whose
+  // realtime connection is blocked still counts as ready.
+  if (match.status === "ACTIVE") markAcked(matchId, userId);
+
   return toView(match);
 }
 
