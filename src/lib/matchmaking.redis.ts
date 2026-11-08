@@ -16,7 +16,7 @@ return nil
 `;
 
 export async function enqueue(userId: string, rating: number) {
-  const now = Date.now();
+  const now = String(Date.now());
   await redis
     .multi()
     .zadd(QUEUE_KEY, rating, userId)
@@ -43,8 +43,8 @@ export async function findAndRemoveOpponent(
     QUEUE_KEY,
     META_KEY,
     userId,
-    rating - range,
-    rating + range
+    String(rating - range),
+    String(rating + range)
   );
   return result as string | null;
 }
@@ -52,13 +52,16 @@ export async function findAndRemoveOpponent(
 export async function getWaitingUsers(): Promise<
   { userId: string; rating: number; enqueuedAt: number }[]
 > {
-  const ids = await redis.zrange(QUEUE_KEY, 0, -1, "WITHSCORES");
+  const ids = await redis.zrange(QUEUE_KEY, "0", "-1", "WITHSCORES");
   const meta = await redis.hgetall(META_KEY);
 
   const result: { userId: string; rating: number; enqueuedAt: number }[] = [];
   for (let i = 0; i < ids.length; i += 2) {
     const userId = ids[i];
-    const rating = Number(ids[i + 1]);
+    const ratingStr = ids[i + 1];
+    if (!userId || !ratingStr) continue;
+
+    const rating = Number(ratingStr);
     const enqueuedAt = Number(meta[userId] ?? Date.now());
     result.push({ userId, rating, enqueuedAt });
   }
