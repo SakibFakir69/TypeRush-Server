@@ -29,9 +29,21 @@ async function resolveAck(
   acked: Set<string>
 ) {
   const bothAcked = userIds.every((id) => acked.has(id));
+  const channel = ablyRealtime.channels.get(`match:${matchId}`);
 
-  // match is already ACTIVE from creation — nothing to change on success
-  if (bothAcked) return;
+  if (bothAcked) {
+    // Give both clients the same starting gun so neither gets a head start.
+    const startsAt = new Date(Date.now() + 3000);
+    await prisma.match.update({
+      where: { id: matchId },
+      data: { startedAt: startsAt },
+    });
+    await channel.publish("match_started", {
+      matchId,
+      startsAt: startsAt.toISOString(),
+    });
+    return;
+  }
 
   // abandon the match, requeue whoever acked
   await prisma.match.update({
@@ -39,7 +51,6 @@ async function resolveAck(
     data: { status: "ABANDONED", endedAt: new Date() },
   });
 
-  const channel = ablyRealtime.channels.get(`match:${matchId}`);
   await channel.publish("match_voided", { matchId, reason: "ack_timeout" });
 
   for (const userId of userIds) {
