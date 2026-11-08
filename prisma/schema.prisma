@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
- 
 }
 
 enum UserRole {
@@ -19,47 +18,61 @@ enum ConditionContest {
   UPCOMING
 }
 
+enum MatchStatus {
+  WAITING
+  ACTIVE
+  COMPLETED
+  ABANDONED
+}
+
+enum MatchResult {
+  WIN
+  LOSS
+  DRAW
+  ABANDONED
+}
+
 model User {
-  id            String               @id @default(uuid())
-  name          String
-  fullName      String
-  age           Int?
-  email         String               @unique
-  password      String?
-  country       String?
-  googleId      String?              @unique
-  authProvider  String               @default("local")
-  emailVerified Boolean              @default(false)
-  avatarUrl     String?
-  bio           String?
-  xp            Int                @default(0)
-  role          UserRole             @default(USER)
-  isDelete      Boolean              @default(false)
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
-  results       Result[]
-  contest       Contest[]
-  participation ContestParticipant[]
-  announcement  Announcement[]
+  id                 String               @id @default(uuid())
+  name               String
+  fullName           String
+  age                Int?
+  email              String               @unique
+  password           String?
+  country            String?
+  googleId           String?              @unique
+  authProvider       String               @default("local")
+  emailVerified      Boolean              @default(false)
+  avatarUrl          String?
+  bio                String?
+  xp                 Int                  @default(0)
+  rating             Int                  @default(100)
+  role               UserRole             @default(USER)
+  isDelete           Boolean              @default(false)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  results            Result[]
+  contest            Contest[]
+  participation      ContestParticipant[]
+  announcement       Announcement[]
+  matchesWon         Match[]              @relation("MatchWinner")
+  matchParticipation MatchParticipant[]   @relation("MatchParticipant")
 }
 
 model Result {
-  id          String    @id @default(uuid())
+  id          String     @id @default(uuid())
   paragraphId String?
   paragraph   Paragraph? @relation(fields: [paragraphId], references: [id])
-
   userId      String?
-  user        User?     @relation(fields: [userId], references: [id])
-    contestId   String?                                             
-  contest     Contest?  @relation(fields: [contestId], references: [id])  
-
+  user        User?      @relation(fields: [userId], references: [id])
+  contestId   String?
+  contest     Contest?   @relation(fields: [contestId], references: [id])
   wpm         Float
   accuracy    Float
   errors      Int
   timeTaken   Int
-  /** Chosen run length in seconds (15 / 30 / 60 …) — leaderboard category. */
   duration    Int?
-  createdAt   DateTime  @default(now())
+  createdAt   DateTime   @default(now())
 
   @@index([userId])
   @@index([paragraphId])
@@ -76,8 +89,9 @@ model Paragraph {
   wordCount  Int
   isDeleted  Boolean  @default(false)
   createdAt  DateTime @default(now())
+  matches    Match[]
 
-  results    Result[]
+  results Result[]
 }
 
 // CONTEST
@@ -93,7 +107,7 @@ model Contest {
   userId       String?
   user         User?                @relation(fields: [userId], references: [id])
   participants ContestParticipant[]
-  results Result[]
+  results      Result[]
 }
 
 // after contest time over no one can particapant
@@ -102,8 +116,8 @@ model ContestParticipant {
   contestId String
   joinedAt  DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id])
-  contest   Contest  @relation(fields: [contestId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+  contest Contest @relation(fields: [contestId], references: [id])
 
   @@id([userId, contestId])
   @@index([userId, contestId])
@@ -117,4 +131,36 @@ model Announcement {
   updatedAt DateTime @updatedAt
   userId    String?
   user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model Match {
+  id           String             @id @default(uuid())
+  paragraphId  String
+  paragraph    Paragraph          @relation(fields: [paragraphId], references: [id])
+  status       MatchStatus        @default(WAITING)
+  createdAt    DateTime           @default(now())
+  startedAt    DateTime?
+  endedAt      DateTime?
+  winnerId     String?
+  winner       User?              @relation("MatchWinner", fields: [winnerId], references: [id])
+  participants MatchParticipant[]
+
+  @@index([status])
+}
+
+model MatchParticipant {
+  matchId      String
+  match        Match        @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User         @relation("MatchParticipant", fields: [userId], references: [id])
+  ratingBefore Int          @default(1200)
+  ratingAfter  Int?
+  wpm          Float?
+  accuracy     Float?
+  errors       Int?
+  result       MatchResult?
+  joinedAt     DateTime     @default(now())
+
+  @@id([matchId, userId])
+  @@index([userId])
 }
