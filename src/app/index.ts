@@ -20,6 +20,8 @@ import { announcementRouter } from "./modules/announcements/announcements.route.
 import { analyticsRouter } from "./modules/analytics/analytics.route.js";
 import { globalLimiter } from "./middleware/rate-limit.middleware.js";
 import { uploadRouter } from "./modules/upload/upload.route.js";
+import matchmakingRoutes from "./modules/battle/matchmaking/matchmaking.route.js";
+
 
 const app = express();
 
@@ -58,6 +60,7 @@ app.use('/api/v1/admin', adminRouter)
 app.use('/api/v1/announcements', announcementRouter)
 app.use('/api/v1/analytics', analyticsRouter) 
 app.use('/api/v1/uploads', uploadRouter)
+app.use("/matchmaking", matchmakingRoutes);
 
 app.get('/', (req: Request, res: Response)  => {
 

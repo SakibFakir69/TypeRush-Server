@@ -46,7 +46,7 @@ model User {
   avatarUrl          String?
   bio                String?
   xp                 Int                  @default(0)
-  rating             Int                  @default(1200)
+  rating             Int                  @default(100)
   role               UserRole             @default(USER)
   isDelete           Boolean              @default(false)
   createdAt          DateTime             @default(now())
