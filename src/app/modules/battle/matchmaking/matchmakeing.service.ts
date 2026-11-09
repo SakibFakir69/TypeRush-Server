@@ -138,3 +138,38 @@ export async function getStatus(userId: string) {
   const inQueue = await isUserQueued(userId);
   return { status: inQueue ? ("waiting" as const) : ("idle" as const) };
 }
+
+
+
+export async function getMatchHistory(userId: string, limit = 20) {
+  const take = Math.min(limit, 100);
+
+  const history = await prisma.matchParticipant.findMany({
+    where: { userId },
+    select: {
+      wpm: true,
+      accuracy: true,
+      errors: true,
+      result: true,
+      ratingBefore: true,
+      ratingAfter: true,
+      joinedAt: true,
+      match: {
+        select: {
+          id: true,
+          status: true,
+          startedAt: true,
+          endedAt: true,
+          paragraph: { select: { content: true, difficulty: true } },
+          participants: {
+            select: { userId: true, wpm: true, result: true, user: { select: { name: true } } },
+          },
+        },
+      },
+    },
+    orderBy: { joinedAt: "desc" },
+    take,
+  });
+
+  return history;
+}

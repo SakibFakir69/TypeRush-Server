@@ -470,6 +470,8 @@ const getTopPlayers = async (req: Request, res: Response) => {
   }
 };
 
+// self use match history
+
 export const invitedController = {
   inviteUser,
   acceptInvite,
