@@ -290,10 +290,194 @@ const getInviteStatus = async (req: Request, res: Response) => {
   }
 };
 
+
+
+const getPlatformOverview = async (req: Request, res: Response) => {
+  try {
+    
+
+    const [totalUsers, totalMatches, matchStatusCounts, resultCounts, aggregates, totalInvites, inviteStatusCounts] =
+      await Promise.all([
+        prisma.user.count({ where: { isDelete: false } }),
+        prisma.match.count(),
+
+        prisma.match.groupBy({
+          by: ["status"],
+          _count: { status: true },
+        }),
+
+        prisma.matchParticipant.groupBy({
+          by: ["result"],
+          where: { result: { not: null } },
+          _count: { result: true },
+        }),
+
+        prisma.matchParticipant.aggregate({
+          where: { wpm: { not: null } },
+          _avg: { wpm: true, accuracy: true },
+          _max: { wpm: true },
+        }),
+
+        prisma.privateInvite.count(),
+
+        prisma.privateInvite.groupBy({
+          by: ["status"],
+          _count: { status: true },
+        }),
+      ]);
+
+    const active = matchStatusCounts.find((m) => m.status === "ACTIVE")?._count.status ?? 0;
+    const completed = matchStatusCounts.find((m) => m.status === "COMPLETED")?._count.status ?? 0;
+    const waiting = matchStatusCounts.find((m) => m.status === "WAITING")?._count.status ?? 0;
+    const abandoned = matchStatusCounts.find((m) => m.status === "ABANDONED")?._count.status ?? 0;
+
+    const matched = inviteStatusCounts.find((i) => i.status === "MATCHED")?._count.status ?? 0;
+    const inviteAcceptRate = totalInvites > 0 ? Number(((matched / totalInvites) * 100).toFixed(1)) : 0;
+
+    return returnResponse(res, true, 200, "platform overview", {
+      totalUsers,
+      totalMatches,
+      matchesByStatus: { active, completed, waiting, abandoned },
+      wins: resultCounts.find((r) => r.result === "WIN")?._count.result ?? 0,
+      losses: resultCounts.find((r) => r.result === "LOSS")?._count.result ?? 0,
+      draws: resultCounts.find((r) => r.result === "DRAW")?._count.result ?? 0,
+      avgWpm: aggregates._avg.wpm ? Number(aggregates._avg.wpm.toFixed(1)) : 0,
+      avgAccuracy: aggregates._avg.accuracy ? Number(aggregates._avg.accuracy.toFixed(1)) : 0,
+      bestWpm: aggregates._max.wpm ?? 0,
+      totalInvites,
+      inviteAcceptRate,
+    });
+  } catch (err) {
+    console.error("getPlatformOverview error:", err);
+    return returnResponse(res, false, 500, "something went wrong");
+  }
+};
+
+// --- matches over time (for a line/bar chart: matches created per day) ---
+
+const getMatchesTimeSeries = async (req: Request, res: Response) => {
+  try {
+    
+
+    const { days } = req.query as { days?: string };
+    const range = Math.min(Number(days) || 30, 180);
+    const since = new Date(Date.now() - range * 24 * 60 * 60 * 1000);
+
+    const rows = await prisma.$queryRaw<{ day: Date; count: bigint }[]>`
+      SELECT date_trunc('day', "createdAt") AS day, COUNT(*)::bigint AS count
+      FROM "Match"
+      WHERE "createdAt" >= ${since}
+      GROUP BY day
+      ORDER BY day ASC
+    `;
+
+    const series = rows.map((r) => ({
+      date: r.day.toISOString().slice(0, 10),
+      matches: Number(r.count),
+    }));
+
+    return returnResponse(res, true, 200, "matches time series", { series });
+  } catch (err) {
+    console.error("getMatchesTimeSeries error:", err);
+    return returnResponse(res, false, 500, "something went wrong");
+  }
+};
+
+// --- avg WPM / accuracy trend over time (platform-wide) ---
+
+const getPerformanceTimeSeries = async (req: Request, res: Response) => {
+  try {
+    
+
+    const { days } = req.query as { days?: string };
+    const range = Math.min(Number(days) || 30, 180);
+    const since = new Date(Date.now() - range * 24 * 60 * 60 * 1000);
+
+    const rows = await prisma.$queryRaw<
+      { day: Date; avg_wpm: number; avg_accuracy: number; sample_size: bigint }[]
+    >`
+      SELECT
+        date_trunc('day', mp."joinedAt") AS day,
+        AVG(mp.wpm) AS avg_wpm,
+        AVG(mp.accuracy) AS avg_accuracy,
+        COUNT(*)::bigint AS sample_size
+      FROM "MatchParticipant" mp
+      WHERE mp."joinedAt" >= ${since} AND mp.wpm IS NOT NULL
+      GROUP BY day
+      ORDER BY day ASC
+    `;
+
+    const series = rows.map((r) => ({
+      date: r.day.toISOString().slice(0, 10),
+      avgWpm: Number(Number(r.avg_wpm).toFixed(1)),
+      avgAccuracy: Number(Number(r.avg_accuracy).toFixed(1)),
+      sampleSize: Number(r.sample_size),
+    }));
+
+    return returnResponse(res, true, 200, "performance time series", { series });
+  } catch (err) {
+    console.error("getPerformanceTimeSeries error:", err);
+    return returnResponse(res, false, 500, "something went wrong");
+  }
+};
+
+// --- invite funnel (pending/matched/declined/cancelled/expired breakdown) ---
+
+const getInviteFunnel = async (req: Request, res: Response) => {
+  try {
+   
+
+    const counts = await prisma.privateInvite.groupBy({
+      by: ["status"],
+      _count: { status: true },
+    });
+
+    const funnel = {
+      pending: counts.find((c) => c.status === "PENDING")?._count.status ?? 0,
+      matched: counts.find((c) => c.status === "MATCHED")?._count.status ?? 0,
+      declined: counts.find((c) => c.status === "DECLINED")?._count.status ?? 0,
+      cancelled: counts.find((c) => c.status === "CANCELLED")?._count.status ?? 0,
+      expired: counts.find((c) => c.status === "EXPIRED")?._count.status ?? 0,
+    };
+
+    return returnResponse(res, true, 200, "invite funnel", { funnel });
+  } catch (err) {
+    console.error("getInviteFunnel error:", err);
+    return returnResponse(res, false, 500, "something went wrong");
+  }
+};
+
+// --- top players leaderboard (table, not just a chart) ---
+
+const getTopPlayers = async (req: Request, res: Response) => {
+  try {
+    
+
+    const { limit } = req.query as { limit?: string };
+    const take = Math.min(Number(limit) || 20, 100);
+
+    const users = await prisma.user.findMany({
+      where: { isDelete: false },
+      select: { id: true, name: true, rating: true, xp: true, country: true },
+      orderBy: { rating: "desc" },
+      take,
+    });
+
+    return returnResponse(res, true, 200, "top players", { users });
+  } catch (err) {
+    console.error("getTopPlayers error:", err);
+    return returnResponse(res, false, 500, "something went wrong");
+  }
+};
+
 export const invitedController = {
   inviteUser,
   acceptInvite,
   declineInvite,
   cancelInvite,
   getInviteStatus,
+  getTopPlayers,
+  getInviteFunnel , getPerformanceTimeSeries,
+   getMatchesTimeSeries,
+   getPlatformOverview
 };

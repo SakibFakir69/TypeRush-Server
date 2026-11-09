@@ -4,6 +4,7 @@ import { verifyRole } from "../../middleware/verify-role.js";
 import { contestController } from "../contest/contest.controller.js";
 import { practiceController } from "../practice/practice.controller.js";
 import { userController } from "../users/user.controller.js";
+import { invitedController } from "../battle/invited/invited.controller.js";
 
 
 
@@ -28,6 +29,15 @@ router.patch("/users/:id/role", verifyToken, verifyRole("ADMIN"), userController
 router.delete("/users/:id", verifyToken, verifyRole("ADMIN"), userController.deleteUser);
 router.patch("/users/:id/restore", verifyToken, verifyRole("ADMIN"), userController.restoreUser);
 
+
+
+
+// STATS / ANALYTICS
+router.get("/stats/overview", verifyToken, verifyRole("ADMIN"), invitedController.getPlatformOverview);
+router.get("/stats/matches-timeseries", verifyToken, verifyRole("ADMIN"), invitedController.getMatchesTimeSeries);
+router.get("/stats/performance-timeseries", verifyToken, verifyRole("ADMIN"), invitedController.getPerformanceTimeSeries);
+router.get("/stats/invite-funnel", verifyToken, verifyRole("ADMIN"), invitedController.getInviteFunnel);
+router.get("/stats/top-players", verifyToken, verifyRole("ADMIN"), invitedController.getTopPlayers);
 
 // add perfomence and optimization
 // then go admin_client - 100% fix
