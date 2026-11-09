@@ -469,6 +469,55 @@ const getTopPlayers = async (req: Request, res: Response) => {
     return returnResponse(res, false, 500, "something went wrong");
   }
 };
+const getMyInvites = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.userId as string;
+    if (!userId) {
+      return returnResponse(res, false, 401, "unauthorized");
+    }
+
+    const { limit } = req.query as { limit?: string };
+    const take = Math.min(Number(limit) || 20, 100);
+
+    const [sent, received] = await Promise.all([
+      prisma.privateInvite.findMany({
+        where: { inviterId: userId },
+        select: {
+          code: true,
+          status: true,
+          duration: true,
+          matchId: true,
+          createdAt: true,
+          respondedAt: true,
+          invitee: { select: { id: true, name: true } },
+          paragraph: { select: { content: true, difficulty: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        take,
+      }),
+      prisma.privateInvite.findMany({
+        where: { inviteeId: userId },
+        select: {
+          code: true,
+          status: true,
+          duration: true,
+          matchId: true,
+          createdAt: true,
+          respondedAt: true,
+          inviter: { select: { id: true, name: true } },
+          paragraph: { select: { content: true, difficulty: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        take,
+      }),
+    ]);
+
+    return returnResponse(res, true, 200, "invite history", { sent, received });
+  } catch (err) {
+    console.error("getMyInvites error:", err);
+    return returnResponse(res, false, 500, "something went wrong");
+  }
+};
 
 // self use match history
 
@@ -481,5 +530,6 @@ export const invitedController = {
   getTopPlayers,
   getInviteFunnel , getPerformanceTimeSeries,
    getMatchesTimeSeries,
-   getPlatformOverview
+   getPlatformOverview,
+   getMyInvites
 };
