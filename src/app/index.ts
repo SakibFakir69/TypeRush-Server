@@ -23,6 +23,7 @@ import { uploadRouter } from "./modules/upload/upload.route.js";
 import matchmakingRoutes from "./modules/battle/matchmaking/matchmaking.route.js";
 import { matchRoutes } from "./modules/battle/match/match.route.js";
 import { ablyRoutes } from "./modules/battle/ably/ably.route.js";
+import { invitedRouter } from "./modules/battle/invited/invited.route.js";
 
 
 const app = express();
@@ -64,6 +65,7 @@ app.use('/api/v1/analytics', analyticsRouter)
 app.use('/api/v1/uploads', uploadRouter)
 app.use("/api/v1/matchmaking", matchmakingRoutes);
 app.use("/api/v1/matches", matchRoutes);
+app.use("/api/v1/battle", invitedRouter);
 app.use('/api/v1/ably', ablyRoutes)
 
 app.get('/', (req: Request, res: Response)  => {

@@ -106,6 +106,19 @@ const acceptInvite = async (req: Request, res: Response) => {
       if (invite.expiresAt < new Date()) return { error: "EXPIRED" as const };
       if (invite.inviterId === userId) return { error: "SELF_ACCEPT" as const };
 
+      // Snapshot both ratings so the Elo settlement starts from real values
+      // instead of the column default.
+      const [inviter, invitee] = await Promise.all([
+        tx.user.findUniqueOrThrow({
+          where: { id: invite.inviterId },
+          select: { rating: true },
+        }),
+        tx.user.findUniqueOrThrow({
+          where: { id: userId },
+          select: { rating: true },
+        }),
+      ]);
+
       const match = await tx.match.create({
         data: {
           paragraphId: invite.paragraphId,
@@ -113,7 +126,10 @@ const acceptInvite = async (req: Request, res: Response) => {
           status: "ACTIVE",
           startedAt: new Date(),
           participants: {
-            create: [{ userId: invite.inviterId }, { userId }],
+            create: [
+              { userId: invite.inviterId, ratingBefore: inviter.rating },
+              { userId, ratingBefore: invitee.rating },
+            ],
           },
         },
       });
