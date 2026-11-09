@@ -41,10 +41,10 @@ router.get("/stats/invite-funnel", verifyToken, verifyRole("ADMIN"), invitedCont
 router.get("/stats/top-players", verifyToken, verifyRole("ADMIN"), invitedController.getTopPlayers);
 
 // matchmaking
-router.get("/stats/overview", verifyToken, matchmakingStatController.overview);
-router.get("/stats/timeseries", verifyToken, matchmakingStatController.timeSeries);
-router.get("/stats/deltas", verifyToken, matchmakingStatController.deltas);
-router.get("/stats/history", verifyToken, matchmakingStatController.history);
+router.get("/stats/overview", verifyToken,verifyRole("ADMIN"), matchmakingStatController.overview);
+router.get("/stats/timeseries", verifyToken,verifyRole("ADMIN"), matchmakingStatController.timeSeries);
+router.get("/stats/deltas", verifyToken, verifyRole("ADMIN"),matchmakingStatController.deltas);
+router.get("/stats/history", verifyToken,verifyRole("ADMIN"), matchmakingStatController.history);
 
 // add perfomence and optimization
 // then go admin_client - 100% fix
