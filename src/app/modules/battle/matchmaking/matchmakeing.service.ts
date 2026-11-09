@@ -158,6 +158,7 @@ export async function getMatchHistory(userId: string, limit = 20) {
         select: {
           id: true,
           status: true,
+          duration: true,
           startedAt: true,
           endedAt: true,
           paragraph: { select: { content: true, difficulty: true } },
