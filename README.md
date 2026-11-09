@@ -233,6 +233,19 @@ All battle routes need a session. `matchmaking` keeps the queue in Redis (sorted
 | `GET` | `/ably/token` | Ably token for the lobby: own matchmaking channel, lobby presence, and every active match you are in. |
 | `GET` | `/ably/token/:matchId` | Ably token for one active match you participate in. |
 
+Private invites live under the same module at `/api/v1/battle`:
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| `POST` | `/battle/invite` | Create an invite `{ time, paragraphId }` → `{ code, expiresIn }`; code lasts 5 min. |
+| `POST` | `/battle/invite/accept` | Accept `{ code }`: creates the match immediately and returns `{ matchId, paragraphId }`. |
+| `POST` | `/battle/invite/decline` | Decline `{ code }` as the invitee. |
+| `POST` | `/battle/invite/cancel` | Revoke your own pending invite. |
+| `GET` | `/battle/invite/:code/status` | Polling fallback: status, `matchId`, `paragraphId`. |
+| `GET` | `/ably/invite-token/:code` | Ably token for `private-match:{code}`, so the inviter hears `match_found` / `invite_declined` / `invite_cancelled` live. |
+
+Private matches skip the queue and the ack handshake: accepting starts an `ACTIVE` match straight away with the invite's `duration`, both ratings snapshotted for Elo, and the same result/forfeit endpoints settle it.
+
 How a match runs:
 
 1. The sweep pairs the oldest waiting player with the closest rating inside a range that starts at ±100 and grows by 50 every 5 s. Stale entries (10 min) and players already in an active match are dropped from the queue.
