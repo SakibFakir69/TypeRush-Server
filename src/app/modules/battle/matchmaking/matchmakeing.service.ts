@@ -73,6 +73,7 @@ export async function sweepQueue() {
 
 async function createMatch(userId: string, userRating: number, opponentId: string) {
   const opponent = await prisma.user.findUniqueOrThrow({ where: { id: opponentId } });
+  
   const paragraph = await prisma.paragraph.findFirstOrThrow({
     where: { isDeleted: false },
     orderBy: { createdAt: "desc" },
