@@ -227,6 +227,7 @@ All battle routes need a session. `matchmaking` keeps the queue in Redis (sorted
 | `POST` | `/matchmaking/join` | Join the global queue at your current rating. |
 | `POST` | `/matchmaking/cancel` | Leave the queue. |
 | `GET` | `/matchmaking/status` | `{ status: "idle" \| "waiting" \| "matched", matchId? }`; also reports an unfinished match. |
+| `GET` | `/matchmaking/history` | `?limit=` (max 100): the player's ranked rows, newest first — own WPM/accuracy/errors/result/rating delta, match status and duration, paragraph, and both participants. |
 | `GET` | `/matches/:id` | Match view for a participant. Reading an active match counts as being ready to race. |
 | `POST` | `/matches/:id/result` | Body `{ wpm, accuracy, errors }`. Settles Elo once both players submit. |
 | `POST` | `/matches/:id/forfeit` | Void an unfinished match with no rating change. |
@@ -242,6 +243,7 @@ Private invites live under the same module at `/api/v1/battle`:
 | `POST` | `/battle/invite/decline` | Decline `{ code }` as the invitee. |
 | `POST` | `/battle/invite/cancel` | Revoke your own pending invite. |
 | `GET` | `/battle/invite/:code/status` | Polling fallback: status, `matchId`, `paragraphId`. |
+| `GET` | `/battle/invite/history` | `?limit=` (max 100): invites sent and received, newest first, with status, code, duration, opponent and paragraph. |
 | `GET` | `/ably/invite-token/:code` | Ably token for `private-match:{code}`, so the inviter hears `match_found` / `invite_declined` / `invite_cancelled` live. |
 
 Private matches skip the queue and the ack handshake: accepting starts an `ACTIVE` match straight away with the invite's `duration`, both ratings snapshotted for Elo, and the same result/forfeit endpoints settle it.
