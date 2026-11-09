@@ -99,6 +99,7 @@ model Paragraph {
   isDeleted  Boolean  @default(false)
   createdAt  DateTime @default(now())
   matches    Match[]
+    invites    PrivateInvite[]
 
   results Result[]
 }
@@ -147,7 +148,7 @@ model Match {
   paragraphId  String
   paragraph    Paragraph          @relation(fields: [paragraphId], references: [id])
   status       MatchStatus        @default(WAITING)
-   duration     Int
+   duration Int @default(30)
   createdAt    DateTime           @default(now())
   startedAt    DateTime?
   endedAt      DateTime?
@@ -178,19 +179,21 @@ model MatchParticipant {
 
 
 model PrivateInvite {
-  id         String       @id @default(uuid())
-  code       String       @unique
-  inviterId  String
-  inviter    User         @relation("InviteInviter", fields: [inviterId], references: [id])
-  inviteeId  String?
-  invitee    User?        @relation("InviteInvitee", fields: [inviteeId], references: [id])
-  duration   Int // seconds, chosen at invite time
-  status     InviteStatus @default(PENDING)
-  matchId    String?      @unique
-  match      Match?       @relation(fields: [matchId], references: [id])
-  createdAt  DateTime     @default(now())
+  id          String       @id @default(uuid())
+  code        String       @unique
+  inviterId   String
+  inviter     User         @relation("InviteInviter", fields: [inviterId], references: [id])
+  inviteeId   String?
+  invitee     User?        @relation("InviteInvitee", fields: [inviteeId], references: [id])
+  paragraphId String
+  paragraph   Paragraph    @relation(fields: [paragraphId], references: [id])
+  duration    Int
+  status      InviteStatus @default(PENDING)
+  matchId     String?      @unique
+  match       Match?       @relation(fields: [matchId], references: [id])
+  createdAt   DateTime     @default(now())
   respondedAt DateTime?
-  expiresAt  DateTime
+  expiresAt   DateTime
 
   @@index([inviterId])
   @@index([status])

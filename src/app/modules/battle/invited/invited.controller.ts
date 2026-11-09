@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { Request, Response } from "express";
 import { ablyClient } from "../../../../config/ably-config.js";
@@ -7,7 +9,6 @@ import { returnResponse } from "../../../../helpers/return-response.js";
 import crypto from "crypto";
 
 const INVITE_TTL_SECONDS = 5 * 60; // invite dies if not accepted in 5 min
-const MATCHED_GRACE_SECONDS = 60; // short cleanup window after match starts
 const MAX_CODE_RETRY = 3;
 
 // --- helpers ---
@@ -15,39 +16,20 @@ const MAX_CODE_RETRY = 3;
 const generateUniqueCode = async (): Promise<string | null> => {
   for (let i = 0; i < MAX_CODE_RETRY; i++) {
     const code = crypto.randomBytes(3).toString("hex");
-    const exists = await redis.exists(`private-match:${code}`);
+    const exists = await prisma.privateInvite.findUnique({ where: { code }, select: { id: true } });
     if (!exists) return code;
   }
   return null; // astronomically unlikely with 16.7M combos, but handle it
 };
 
-const ACCEPT_LUA = `
-local key = KEYS[1]
-local userId = ARGV[1]
-
-local status = redis.call("HGET", key, "status")
-if status == false then
-  return "NOT_FOUND"
-end
-if status ~= "pending" then
-  return "ALREADY_USED"
-end
-
-local playerA = redis.call("HGET", key, "playerA")
-if playerA == userId then
-  return "SELF_ACCEPT"
-end
-
-redis.call("HSET", key, "status", "matched", "playerB", userId)
-return "OK:" .. playerA
-`;
+const inviteChannelFor = (code: string) => ablyClient.channels.get(`private-match:${code}`);
 
 // --- invite ---
 
 const inviteUser = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.userId as string;
-    const { time } = req.body as { time?: number };
+    const { time, paragraphId } = req.body as { time?: number; paragraphId?: string };
 
     if (!userId) {
       return returnResponse(res, false, 401, "unauthorized");
@@ -55,13 +37,20 @@ const inviteUser = async (req: Request, res: Response) => {
     if (!time || typeof time !== "number" || time <= 0) {
       return returnResponse(res, false, 400, "invalid time");
     }
+    if (!paragraphId || typeof paragraphId !== "string") {
+      return returnResponse(res, false, 400, "paragraphId required");
+    }
 
-    const existingUser = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true },
-    });
+    const [existingUser, paragraph] = await Promise.all([
+      prisma.user.findUnique({ where: { id: userId }, select: { id: true } }),
+      prisma.paragraph.findUnique({ where: { id: paragraphId }, select: { id: true, isDeleted: true } }),
+    ]);
+
     if (!existingUser) {
       return returnResponse(res, false, 404, "user not found");
+    }
+    if (!paragraph || paragraph.isDeleted) {
+      return returnResponse(res, false, 404, "paragraph not found");
     }
 
     const code = await generateUniqueCode();
@@ -69,17 +58,21 @@ const inviteUser = async (req: Request, res: Response) => {
       return returnResponse(res, false, 500, "could not generate invite code, try again");
     }
 
-    const redisKey = `private-match:${code}`;
+    const expiresAt = new Date(Date.now() + INVITE_TTL_SECONDS * 1000);
 
-    const pipeline = redis.pipeline();
-    pipeline.hset(redisKey, {
-      playerA: userId,
-      status: "pending",
-      time: String(time),
-      createdAt: Date.now().toString(),
+    const invite = await prisma.privateInvite.create({
+      data: {
+        code,
+        inviterId: userId,
+        duration: time,
+        paragraphId,
+        status: "PENDING",
+        expiresAt,
+      },
     });
-    pipeline.expire(redisKey, INVITE_TTL_SECONDS);
-    await pipeline.exec();
+
+    // fast lookup cache, TTL as auto-cleanup — Postgres is still the source of truth
+    await redis.set(`private-match:${code}`, invite.id, "EX", INVITE_TTL_SECONDS);
 
     return returnResponse(res, true, 200, "invite created", {
       code,
@@ -105,60 +98,65 @@ const acceptInvite = async (req: Request, res: Response) => {
       return returnResponse(res, false, 400, "code required");
     }
 
-    const redisKey = `private-match:${code}`;
+    const result = await prisma.$transaction(async (tx) => {
+      const invite = await tx.privateInvite.findUnique({ where: { code } });
 
-    // atomic compare-and-set so two concurrent accepts can't both win
-    const result = (await redis.eval(ACCEPT_LUA, 1, redisKey, userId)) as string;
+      if (!invite) return { error: "NOT_FOUND" as const };
+      if (invite.status !== "PENDING") return { error: "ALREADY_USED" as const };
+      if (invite.expiresAt < new Date()) return { error: "EXPIRED" as const };
+      if (invite.inviterId === userId) return { error: "SELF_ACCEPT" as const };
 
-    if (result === "NOT_FOUND") {
-      return returnResponse(res, false, 404, "invite not found or expired");
-    }
-    if (result === "ALREADY_USED") {
-      return returnResponse(res, false, 409, "invite already used");
-    }
-    if (result === "SELF_ACCEPT") {
-      return returnResponse(res, false, 400, "cannot accept your own invite");
-    }
-
-    const playerAId = result.split(":")[1];
-    const timeField = await redis.hget(redisKey, "time");
-    const time = Number(timeField ?? 30);
-
-    let match;
-    try {
-      match = await prisma.match.create({
+      const match = await tx.match.create({
         data: {
+          paragraphId: invite.paragraphId,
+          duration: invite.duration,
           status: "ACTIVE",
-          time,
+          startedAt: new Date(),
           participants: {
-            create: [{ userId: playerAId }, { userId }],
+            create: [{ userId: invite.inviterId }, { userId }],
           },
         },
       });
-    } catch (dbErr) {
-      // roll back redis state so the invite doesn't get stuck "matched" with no match row
-      await redis.hset(redisKey, { status: "pending" });
-      await redis.hdel(redisKey, "playerB");
-      throw dbErr;
+
+      const updatedInvite = await tx.privateInvite.update({
+        where: { id: invite.id },
+        data: { status: "MATCHED", inviteeId: userId, matchId: match.id, respondedAt: new Date() },
+      });
+
+      return { invite: updatedInvite, match };
+    });
+
+    if ("error" in result) {
+      const map = {
+        NOT_FOUND: [404, "invite not found"],
+        ALREADY_USED: [409, "invite already used"],
+        EXPIRED: [410, "invite expired"],
+        SELF_ACCEPT: [400, "cannot accept your own invite"],
+      } as const;
+      const [statusCode, msg] = map[result.error];
+      return returnResponse(res, false, statusCode, msg);
     }
 
-    await redis.hset(redisKey, { matchId: match.id });
-    await redis.expire(redisKey, MATCHED_GRACE_SECONDS);
+    await redis.del(`private-match:${code}`);
 
-    const inviteChannel = ablyClient.channels.get(redisKey);
-    await inviteChannel.publish("match_found", { matchId: match.id });
+    await inviteChannelFor(code).publish("match_found", {
+      matchId: result.match.id,
+      paragraphId: result.match.paragraphId,
+    });
 
-    // TODO: grant match:{id} channel capability to playerAId and userId only,
-    // same as random-matchmaking ACTIVE-match capability grant
+    // TODO: grant match:{id} channel capability to inviterId and userId only
 
-    return returnResponse(res, true, 200, "match started", { matchId: match.id });
+    return returnResponse(res, true, 200, "match started", {
+      matchId: result.match.id,
+      paragraphId: result.match.paragraphId,
+    });
   } catch (err) {
     console.error("acceptInvite error:", err);
     return returnResponse(res, false, 500, "something went wrong");
   }
 };
 
-// --- decline (invitee rejects, without becoming playerB) ---
+// --- decline (invitee rejects, without becoming inviteeId) ---
 
 const declineInvite = async (req: Request, res: Response) => {
   try {
@@ -172,23 +170,26 @@ const declineInvite = async (req: Request, res: Response) => {
       return returnResponse(res, false, 400, "code required");
     }
 
-    const redisKey = `private-match:${code}`;
-    const invite = await redis.hgetall(redisKey);
+    const invite = await prisma.privateInvite.findUnique({ where: { code } });
 
-    if (!invite?.playerA) {
+    if (!invite) {
       return returnResponse(res, false, 404, "invite not found or already expired");
     }
-    if (invite.playerA === userId) {
+    if (invite.inviterId === userId) {
       return returnResponse(res, false, 400, "cannot decline your own invite, use cancel");
     }
-    if (invite.status !== "pending") {
+    if (invite.status !== "PENDING") {
       return returnResponse(res, false, 409, "invite already used");
     }
 
-    await redis.del(redisKey);
+    await prisma.privateInvite.update({
+      where: { id: invite.id },
+      data: { status: "DECLINED", respondedAt: new Date() },
+    });
 
-    const inviteChannel = ablyClient.channels.get(redisKey);
-    await inviteChannel.publish("invite_declined", { code });
+    await redis.del(`private-match:${code}`);
+
+    await inviteChannelFor(code).publish("invite_declined", { code });
 
     return returnResponse(res, true, 200, "invite declined");
   } catch (err) {
@@ -211,23 +212,26 @@ const cancelInvite = async (req: Request, res: Response) => {
       return returnResponse(res, false, 400, "code required");
     }
 
-    const redisKey = `private-match:${code}`;
-    const invite = await redis.hgetall(redisKey);
+    const invite = await prisma.privateInvite.findUnique({ where: { code } });
 
-    if (!invite?.playerA) {
+    if (!invite) {
       return returnResponse(res, false, 404, "invite not found or already expired");
     }
-    if (invite.playerA !== userId) {
+    if (invite.inviterId !== userId) {
       return returnResponse(res, false, 403, "not your invite");
     }
-    if (invite.status !== "pending") {
+    if (invite.status !== "PENDING") {
       return returnResponse(res, false, 409, "invite already accepted, cannot cancel");
     }
 
-    await redis.del(redisKey);
+    await prisma.privateInvite.update({
+      where: { id: invite.id },
+      data: { status: "CANCELLED", respondedAt: new Date() },
+    });
 
-    const inviteChannel = ablyClient.channels.get(redisKey);
-    await inviteChannel.publish("invite_cancelled", { code });
+    await redis.del(`private-match:${code}`);
+
+    await inviteChannelFor(code).publish("invite_cancelled", { code });
 
     return returnResponse(res, true, 200, "invite cancelled");
   } catch (err) {
@@ -250,19 +254,19 @@ const getInviteStatus = async (req: Request, res: Response) => {
       return returnResponse(res, false, 400, "code required");
     }
 
-    const redisKey = `private-match:${code}`;
-    const invite = await redis.hgetall(redisKey);
+    const invite = await prisma.privateInvite.findUnique({ where: { code } });
 
-    if (!invite?.playerA) {
+    if (!invite) {
       return returnResponse(res, false, 404, "invite not found or expired");
     }
-    if (invite.playerA !== userId && invite.playerB !== userId) {
+    if (invite.inviterId !== userId && invite.inviteeId !== userId) {
       return returnResponse(res, false, 403, "not part of this invite");
     }
 
     return returnResponse(res, true, 200, "invite status", {
       status: invite.status,
       matchId: invite.matchId ?? null,
+      paragraphId: invite.paragraphId,
     });
   } catch (err) {
     console.error("getInviteStatus error:", err);
@@ -270,8 +274,10 @@ const getInviteStatus = async (req: Request, res: Response) => {
   }
 };
 
-
-export const  invitedController = {
-     inviteUser, acceptInvite, declineInvite, cancelInvite, getInviteStatus
-
-}
+export const invitedController = {
+  inviteUser,
+  acceptInvite,
+  declineInvite,
+  cancelInvite,
+  getInviteStatus,
+};
