@@ -5,6 +5,7 @@ import { contestController } from "../contest/contest.controller.js";
 import { practiceController } from "../practice/practice.controller.js";
 import { userController } from "../users/user.controller.js";
 import { invitedController } from "../battle/invited/invited.controller.js";
+import { matchmakingStatController } from "../battle/matchmaking/stats.controller.js";
 
 
 
@@ -38,6 +39,12 @@ router.get("/stats/matches-timeseries", verifyToken, verifyRole("ADMIN"), invite
 router.get("/stats/performance-timeseries", verifyToken, verifyRole("ADMIN"), invitedController.getPerformanceTimeSeries);
 router.get("/stats/invite-funnel", verifyToken, verifyRole("ADMIN"), invitedController.getInviteFunnel);
 router.get("/stats/top-players", verifyToken, verifyRole("ADMIN"), invitedController.getTopPlayers);
+
+// matchmaking
+router.get("/stats/overview", verifyToken, matchmakingStatController.overview);
+router.get("/stats/timeseries", verifyToken, matchmakingStatController.timeSeries);
+router.get("/stats/deltas", verifyToken, matchmakingStatController.deltas);
+router.get("/stats/history", verifyToken, matchmakingStatController.history);
 
 // add perfomence and optimization
 // then go admin_client - 100% fix
