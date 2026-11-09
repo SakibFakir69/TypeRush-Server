@@ -218,6 +218,28 @@ Base path: `/api/v1`. Interactive docs: `/docs`.
 | `POST` | `/contests/:id/submit` | Submit a contest run (rate limited). |
 | `DELETE` | `/contests/:id` | Delete. |
 
+### Battles (1v1 matchmaking)
+
+All battle routes need a session. `matchmaking` keeps the queue in Redis (sorted set by rating plus an enqueue-time hash), and a worker sweeps it every 1.5 s.
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| `POST` | `/matchmaking/join` | Join the global queue at your current rating. |
+| `POST` | `/matchmaking/cancel` | Leave the queue. |
+| `GET` | `/matchmaking/status` | `{ status: "idle" \| "waiting" \| "matched", matchId? }`; also reports an unfinished match. |
+| `GET` | `/matches/:id` | Match view for a participant. Reading an active match counts as being ready to race. |
+| `POST` | `/matches/:id/result` | Body `{ wpm, accuracy, errors }`. Settles Elo once both players submit. |
+| `POST` | `/matches/:id/forfeit` | Void an unfinished match with no rating change. |
+| `GET` | `/ably/token` | Ably token for the lobby: own matchmaking channel, lobby presence, and every active match you are in. |
+| `GET` | `/ably/token/:matchId` | Ably token for one active match you participate in. |
+
+How a match runs:
+
+1. The sweep pairs the oldest waiting player with the closest rating inside a range that starts at ±100 and grows by 50 every 5 s. Stale entries (10 min) and players already in an active match are dropped from the queue.
+2. `match_found` is published on `matchmaking:user:{id}` with the match id and paragraph.
+3. Both players must show up within 8 s — an Ably `ack` message or a plain `GET /matches/:id` both count. When both are in, `startedAt` is set to `now + 3s` and `match_started` is published; otherwise the match is abandoned and whoever showed up is requeued.
+4. Results are compared by WPM, then accuracy, then a draw. Elo uses K = 24 and ratings never go below 0. The final view is published as `match_finished` on `match:{id}`.
+
 ### Admin, announcements, analytics, uploads
 
 | Method | Path | Notes |
@@ -357,7 +379,7 @@ npx prisma migrate deploy
 
 ## Roadmap
 
-- Socket.IO matchmaking for 1v1 battles
+- Battle history and rating graphs on the client (matches are already stored)
 - Persisted announcements feed for non-admin users
 - Team/organisation contest management
 - Real-time leaderboard pushes instead of polling
