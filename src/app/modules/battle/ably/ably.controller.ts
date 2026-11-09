@@ -40,8 +40,7 @@ export const getUserToken = async (req: Request, res: Response) => {
   return res.json(tokenRequest);
 };
 
-export const getMatchToken = async (req: Request, res: Response) => {
-  const { matchId } = req.params as { matchId: string };
+export const getMatchToken = async (req: Request, res: Response) => {  const { matchId } = req.params as { matchId: string };
   const userId = req.user?.userId as string;
   
   if (!userId) {
@@ -65,6 +64,53 @@ export const getMatchToken = async (req: Request, res: Response) => {
     clientId: userId,
     capability: {
       [`match:${matchId}`]: ["subscribe", "publish", "presence"],
+    },
+    ttl: 60 * 60 * 1000,
+  });
+
+  return res.json(tokenRequest);
+};
+
+/**
+ * Token for a private invite channel (`private-match:{code}`). The inviter
+ * subscribes while waiting so accept / decline / cancel arrive instantly
+ * instead of being discovered by polling.
+ */
+export const getInviteToken = async (req: Request, res: Response) => {
+  const { code } = req.params as { code?: string };
+  const userId = req.user?.userId;
+
+  if (!userId) {
+    return res
+      .status(StatusCodes.UNAUTHORIZED)
+      .json({ success: false, message: "Unauthorized" });
+  }
+  if (!code) {
+    return res
+      .status(StatusCodes.BAD_REQUEST)
+      .json({ success: false, message: "Invite code required" });
+  }
+
+  const invite = await prisma.privateInvite.findUnique({
+    where: { code },
+    select: { inviterId: true, inviteeId: true },
+  });
+
+  if (!invite) {
+    return res
+      .status(StatusCodes.NOT_FOUND)
+      .json({ success: false, message: "Invite not found" });
+  }
+  if (invite.inviterId !== userId && invite.inviteeId !== userId) {
+    return res
+      .status(StatusCodes.FORBIDDEN)
+      .json({ success: false, message: "Not part of this invite" });
+  }
+
+  const tokenRequest = await ablyClient.auth.createTokenRequest({
+    clientId: userId,
+    capability: {
+      [`private-match:${code}`]: ["subscribe", "publish", "presence"],
     },
     ttl: 60 * 60 * 1000,
   });

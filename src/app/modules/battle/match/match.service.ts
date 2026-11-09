@@ -16,6 +16,8 @@ export type MatchView = {
   id: string;
   status: "WAITING" | "ACTIVE" | "COMPLETED" | "ABANDONED";
   paragraph: string;
+  /** Race length in seconds (invites choose it, ranked matches use the default). */
+  duration: number;
   startedAt: string | null;
   endedAt: string | null;
   winnerId: string | null;
@@ -61,6 +63,7 @@ const matchInclude = {
 type MatchWithParticipants = {
   id: string;
   status: "WAITING" | "ACTIVE" | "COMPLETED" | "ABANDONED";
+  duration: number;
   createdAt: Date;
   startedAt: Date | null;
   endedAt: Date | null;
@@ -83,6 +86,7 @@ function toView(match: MatchWithParticipants): MatchView {
     id: match.id,
     status: match.status,
     paragraph: match.paragraph.content,
+    duration: match.duration,
     startedAt: match.startedAt ? match.startedAt.toISOString() : null,
     endedAt: match.endedAt ? match.endedAt.toISOString() : null,
     winnerId: match.winnerId,
