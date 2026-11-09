@@ -20,6 +20,7 @@ type AckSession = {
 const sessions = new Map<string, AckSession>();
 
 export function awaitMatchAck(matchId: string, userIds: [string, string]) {
+    
   const channel = ablyRealtime.channels.get(`match:${matchId}`);
 
   const listener = (msg: InboundMessage) => {

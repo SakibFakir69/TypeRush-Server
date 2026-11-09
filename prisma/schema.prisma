@@ -31,6 +31,13 @@ enum MatchResult {
   DRAW
   ABANDONED
 }
+enum InviteStatus {
+  PENDING
+  MATCHED
+  DECLINED
+  CANCELLED
+  EXPIRED
+}
 
 model User {
   id                 String               @id @default(uuid())
@@ -57,6 +64,8 @@ model User {
   announcement       Announcement[]
   matchesWon         Match[]              @relation("MatchWinner")
   matchParticipation MatchParticipant[]   @relation("MatchParticipant")
+    invitesSent     PrivateInvite[] @relation("InviteInviter")
+  invitesReceived PrivateInvite[] @relation("InviteInvitee")
 }
 
 model Result {
@@ -90,6 +99,7 @@ model Paragraph {
   isDeleted  Boolean  @default(false)
   createdAt  DateTime @default(now())
   matches    Match[]
+    invites    PrivateInvite[]
 
   results Result[]
 }
@@ -138,12 +148,14 @@ model Match {
   paragraphId  String
   paragraph    Paragraph          @relation(fields: [paragraphId], references: [id])
   status       MatchStatus        @default(WAITING)
+   duration Int @default(30)
   createdAt    DateTime           @default(now())
   startedAt    DateTime?
   endedAt      DateTime?
   winnerId     String?
   winner       User?              @relation("MatchWinner", fields: [winnerId], references: [id])
   participants MatchParticipant[]
+   invite       PrivateInvite?
 
   @@index([status])
 }
@@ -163,4 +175,26 @@ model MatchParticipant {
 
   @@id([matchId, userId])
   @@index([userId])
+}
+
+
+model PrivateInvite {
+  id          String       @id @default(uuid())
+  code        String       @unique
+  inviterId   String
+  inviter     User         @relation("InviteInviter", fields: [inviterId], references: [id])
+  inviteeId   String?
+  invitee     User?        @relation("InviteInvitee", fields: [inviteeId], references: [id])
+  paragraphId String
+  paragraph   Paragraph    @relation(fields: [paragraphId], references: [id])
+  duration    Int
+  status      InviteStatus @default(PENDING)
+  matchId     String?      @unique
+  match       Match?       @relation(fields: [matchId], references: [id])
+  createdAt   DateTime     @default(now())
+  respondedAt DateTime?
+  expiresAt   DateTime
+
+  @@index([inviterId])
+  @@index([status])
 }
