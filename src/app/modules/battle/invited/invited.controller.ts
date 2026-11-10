@@ -109,6 +109,7 @@ const acceptInvite = async (req: Request, res: Response) => {
       // Snapshot both ratings so the Elo settlement starts from real values
       // instead of the column default.
       const [inviter, invitee] = await Promise.all([
+        
         tx.user.findUniqueOrThrow({
           where: { id: invite.inviterId },
           select: { rating: true },
@@ -491,6 +492,24 @@ const getMyInvites = async (req: Request, res: Response) => {
           respondedAt: true,
           invitee: { select: { id: true, name: true } },
           paragraph: { select: { content: true, difficulty: true } },
+          match: {
+            select: {
+              id: true,
+              status: true,
+              winnerId: true,
+              participants: {
+                where: { userId },
+                select: {
+                  userId: true,
+                  result: true,
+                  wpm: true,
+                  accuracy: true,
+                  ratingBefore: true,
+                  ratingAfter: true,
+                },
+              },
+            },
+          },
         },
         orderBy: { createdAt: "desc" },
         take,
@@ -506,6 +525,24 @@ const getMyInvites = async (req: Request, res: Response) => {
           respondedAt: true,
           inviter: { select: { id: true, name: true } },
           paragraph: { select: { content: true, difficulty: true } },
+          match: {
+            select: {
+              id: true,
+              status: true,
+              winnerId: true,
+              participants: {
+                where: { userId },
+                select: {
+                  userId: true,
+                  result: true,
+                  wpm: true,
+                  accuracy: true,
+                  ratingBefore: true,
+                  ratingAfter: true,
+                },
+              },
+            },
+          },
         },
         orderBy: { createdAt: "desc" },
         take,

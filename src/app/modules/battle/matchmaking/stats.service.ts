@@ -71,6 +71,7 @@ export async function getTimeSeries(userId: string, limit: number) {
 }
 
 export async function getDeltas(userId: string) {
+
   const rows = await prisma.matchParticipant.findMany({
     where: { userId, wpm: { not: null } },
     select: { wpm: true, accuracy: true, joinedAt: true, match: { select: { id: true } } },
@@ -123,4 +124,37 @@ export async function getHistory(userId: string, limit: number) {
     orderBy: { joinedAt: "desc" },
     take,
   });
+}
+
+
+
+type Granularity = "day" | "week" | "month";
+
+export async function getMatchmakingTimeseries(
+  granularity: Granularity = "day",
+  days: number = 30
+) {
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+
+  const truncUnit = granularity; 
+
+  const rows = await prisma.$queryRawUnsafe<
+    { bucket: Date; count: bigint }[]
+  >(
+    `
+    SELECT date_trunc('${truncUnit}', "createdAt") AS bucket,
+           COUNT(*) AS count
+    FROM "Match"
+    WHERE "createdAt" >= $1
+    GROUP BY bucket
+    ORDER BY bucket ASC
+    `,
+    since
+  );
+
+  return rows.map((r) => ({
+    date: r.bucket.toISOString(),
+    count: Number(r.count),
+  }));
 }

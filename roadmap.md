@@ -1,8 +1,10 @@
 
 
-
-1. work on features
-2. work on ui/ux
+0. work in admin api set up for inivted and match stats
+1. work in history api invited and match logic
+4. complete un complete issue,
+2. work in invited and match process fast and easy 
+3. server rules adjust
 
 
 
