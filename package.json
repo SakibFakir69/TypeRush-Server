@@ -52,7 +52,7 @@
     "@types/js-yaml": "^4.0.9",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.3.0",
-    "@types/node": "^26.6.2",
+    "@types/node": "^26.6.6",
     "@types/otp-generator": "^4.0.2",
     "@types/passport": "^1.0.17",
     "@types/passport-google-oauth20": "^2.0.17",

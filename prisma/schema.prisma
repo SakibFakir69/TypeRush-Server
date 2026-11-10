@@ -31,6 +31,7 @@ enum MatchResult {
   DRAW
   ABANDONED
 }
+
 enum InviteStatus {
   PENDING
   MATCHED
@@ -58,14 +59,17 @@ model User {
   isDelete           Boolean              @default(false)
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
+  currentWinStreak   Int                  @default(0)
+  bestWinStreak      Int                  @default(0)
+  achievements       UserAchievement[]
   results            Result[]
   contest            Contest[]
   participation      ContestParticipant[]
   announcement       Announcement[]
   matchesWon         Match[]              @relation("MatchWinner")
   matchParticipation MatchParticipant[]   @relation("MatchParticipant")
-    invitesSent     PrivateInvite[] @relation("InviteInviter")
-  invitesReceived PrivateInvite[] @relation("InviteInvitee")
+  invitesSent        PrivateInvite[]      @relation("InviteInviter")
+  invitesReceived    PrivateInvite[]      @relation("InviteInvitee")
 }
 
 model Result {
@@ -90,16 +94,16 @@ model Result {
 }
 
 model Paragraph {
-  id         String   @id @default(uuid())
+  id         String          @id @default(uuid())
   content    String
-  language   String?  @default("en")
+  language   String?         @default("en")
   category   String?
   difficulty String?
   wordCount  Int
-  isDeleted  Boolean  @default(false)
-  createdAt  DateTime @default(now())
+  isDeleted  Boolean         @default(false)
+  createdAt  DateTime        @default(now())
   matches    Match[]
-    invites    PrivateInvite[]
+  invites    PrivateInvite[]
 
   results Result[]
 }
@@ -148,14 +152,14 @@ model Match {
   paragraphId  String
   paragraph    Paragraph          @relation(fields: [paragraphId], references: [id])
   status       MatchStatus        @default(WAITING)
-   duration Int @default(30)
+  duration     Int                @default(30)
   createdAt    DateTime           @default(now())
   startedAt    DateTime?
   endedAt      DateTime?
   winnerId     String?
   winner       User?              @relation("MatchWinner", fields: [winnerId], references: [id])
   participants MatchParticipant[]
-   invite       PrivateInvite?
+  invite       PrivateInvite?
 
   @@index([status])
 }
@@ -177,7 +181,6 @@ model MatchParticipant {
   @@index([userId])
 }
 
-
 model PrivateInvite {
   id          String       @id @default(uuid())
   code        String       @unique
@@ -197,4 +200,27 @@ model PrivateInvite {
 
   @@index([inviterId])
   @@index([status])
+}
+
+model Achievement {
+  id          String            @id @default(uuid())
+  key         String            @unique
+  name        String
+  description String
+  category    String // "speed" | "accuracy" | "volume" | "streak"
+  tier        Int // 1 = bronze, 2 = silver, 3 = gold
+  threshold   Int // the number to reach, e.g. wpm 40/70/100
+  users       UserAchievement[]
+}
+
+model UserAchievement {
+  id            String      @id @default(uuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+  unlockedAt    DateTime    @default(now())
+
+  @@unique([userId, achievementId])
+  @@index([userId])
 }
