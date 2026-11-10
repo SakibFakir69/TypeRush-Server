@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { prisma } from "../../../lib/prisma.db.js";
 import { Prisma } from "@prisma/client";
 import type {
@@ -69,13 +68,35 @@ const deleteContest = async (contestId: string) => {
   return prisma.contest.delete({ where: { id: contestId } });
 };
 
+type ContestWindow = { contestDate: Date; time: number };
+
+/**
+ * `Contest.condition` is written once on create (default `UPCOMING`) and no cron
+ * ever advances it, so a finished contest still reads `UPCOMING` in the DB.
+ * Derive the state from `contestDate` + `time` (seconds) on read instead.
+ */
+function resolveContestCondition(
+  contest: ContestWindow,
+  nowMs: number
+): "UPCOMING" | "RUNNING" | "FINISHED" {
+  const start = contest.contestDate.getTime();
+  if (Number.isNaN(start)) return "UPCOMING";
+  const durationMs = Number.isFinite(contest.time) ? Math.max(0, contest.time) * 1000 : 0;
+  if (nowMs < start) return "UPCOMING";
+  if (nowMs < start + durationMs) return "RUNNING";
+  return "FINISHED";
+}
+
 const getAllContests = async (query: GetContestsQueryAll) => {
   const { limit, page, sortBy } = query;
   const skip = (page - 1) * limit;
 
   const [contests, total] = await Promise.all([
     prisma.contest.findMany({
-      include: { user: true },
+      include: {
+        user: true,
+        _count: { select: { participants: true } },
+      },
       orderBy: { createdAt: sortBy === "asc" ? "asc" : "desc" },
       take: limit,
       skip,
@@ -83,8 +104,18 @@ const getAllContests = async (query: GetContestsQueryAll) => {
     prisma.contest.count(),
   ]);
 
+  const now = Date.now();
+
   return {
-    contests,
+    // `participants` is exposed as a count (the raw join rows are not useful to
+    // an admin table) and `condition` is derived from the contest window: the
+    // column is only written on create, so a finished contest still reads
+    // UPCOMING in the DB and would otherwise render as "Upcoming" forever.
+    contests: contests.map(({ _count, ...contest }) => ({
+      ...contest,
+      participants: _count.participants,
+      condition: resolveContestCondition(contest, now),
+    })),
     pagination: {
       page,
       limit,
