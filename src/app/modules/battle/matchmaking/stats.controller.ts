@@ -25,6 +25,7 @@ export async function timeSeries(req: Request, res: Response) {
 
 export async function deltas(req: Request, res: Response) {
   try {
+
     const result = await statsService.getDeltas(req.user!.userId);
     return returnResponse(res, true, 200, "match deltas", { deltas: result });
   } catch (err) {
@@ -44,6 +45,35 @@ export async function history(req: Request, res: Response) {
   }
 }
 
+export async function matchmakingTimeseries(req: Request, res: Response) {
+  const granularity = (req.query.granularity as string) || "day";
+  const days = Math.min(Math.max(Number(req.query.days) || 30, 1), 365);
+
+  if (!["day", "week", "month"].includes(granularity)) {
+    return returnResponse(
+      res,
+      false,
+      400,
+      "granularity must be day, week, or month"
+    );
+  }
+
+  try {
+    const result = await statsService.getMatchmakingTimeseries(
+      granularity as "day" | "week" | "month",
+      days
+    );
+    return returnResponse(res, true, 200, "matchmaking timeseries", {
+      granularity,
+      days,
+      series: result,
+    });
+  } catch (err) {
+    console.error("matchmakingTimeseries error:", err);
+    return returnResponse(res, false, 500, "something went wrong");
+  }
+}
+
 export const matchmakingStatController = {
-    history,timeSeries,overview,deltas
+    history,timeSeries,overview,deltas,matchmakingTimeseries
 }
