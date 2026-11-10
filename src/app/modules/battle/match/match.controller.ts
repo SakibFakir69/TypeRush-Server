@@ -4,7 +4,9 @@ import { returnResponse } from "../../../../helpers/return-response.js";
 import {
   forfeitMatch,
   getMatchForUser,
+  getRecentMatchesForUser,
   submitMatchResult,
+  getLatestMatchesAdmin,getRecentMatchesAdmin
 } from "./match.service.js";
 
 export async function getMatch(req: Request, res: Response) {
@@ -88,4 +90,73 @@ export async function forfeit(req: Request, res: Response) {
   }
 
   return res.status(StatusCodes.OK).json({ success: true });
+}
+
+
+export async function getLatestMatches(req: Request, res: Response) {
+  const userId = req.user!.userId;
+  
+
+  const matches = await getRecentMatchesForUser(userId, 50, 0);
+
+  return res.status(StatusCodes.OK).json({
+    success: true,
+    data: matches.matches,
+  });
+}
+
+export async function getRecentMatches(req: Request, res: Response) {
+  const userId = req.user!.userId;
+
+  const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 50);
+  const page = Math.max(Number(req.query.page) || 1, 1);
+  const offset = (page - 1) * limit;
+
+  const { matches, total } = await getRecentMatchesForUser(
+    userId,
+    limit,
+    offset
+  );
+
+  return res.status(StatusCodes.OK).json({
+    success: true,
+    data: matches,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  });
+}
+
+
+
+export async function getRecentMatchesAdminHandler(req: Request, res: Response) {
+  const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 50);
+  const page = Math.max(Number(req.query.page) || 1, 1);
+  const offset = (page - 1) * limit;
+
+  const { matches, total } = await getRecentMatchesAdmin(limit, offset);
+  
+
+  return res.status(StatusCodes.OK).json({
+    success: true,
+    data: matches,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  });
+}
+
+export async function getLatestMatchesAdminHandler(req: Request, res: Response) {
+  const matches = await getLatestMatchesAdmin(50);
+
+  return res.status(StatusCodes.OK).json({
+    success: true,
+    data: matches,
+  });
 }

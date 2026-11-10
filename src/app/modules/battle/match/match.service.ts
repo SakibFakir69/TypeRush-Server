@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { prisma } from "../../../../lib/prisma.db.js";
 import { ablyClient } from "../../../../config/ably-config.js";
 import { markAcked } from "../matchmaking/matchAck.service.js";
@@ -257,4 +256,66 @@ export async function forfeitMatch(matchId: string, userId: string) {
     .catch(() => undefined);
 
   return { ok: true as const };
+}
+
+
+
+
+export async function getRecentMatchesForUser(
+  userId: string,
+  limit: number,
+  offset: number
+) {
+  const where = {
+    participants: { some: { userId } },
+  };
+
+  const [matches, total] = await Promise.all([
+    prisma.match.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      skip: offset,
+      include: {
+        participants: {
+          select: { userId: true, wpm: true, accuracy: true, errors: true },
+        },
+      },
+    }),
+    prisma.match.count({ where }),
+  ]);
+
+  return { matches, total };
+}
+
+
+
+export async function getRecentMatchesAdmin(limit: number, offset: number) {
+  const [matches, total] = await Promise.all([
+    prisma.match.findMany({
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      skip: offset,
+      include: {
+        participants: {
+          select: { userId: true, wpm: true, accuracy: true, errors: true },
+        },
+      },
+    }),
+    prisma.match.count(),
+  ]);
+
+  return { matches, total };
+}
+
+export async function getLatestMatchesAdmin(limit: number) {
+  return prisma.match.findMany({
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    include: {
+      participants: {
+        select: { userId: true, wpm: true, accuracy: true, errors: true },
+      },
+    },
+  });
 }
