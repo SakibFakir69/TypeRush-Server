@@ -206,6 +206,7 @@ model Achievement {
   id          String            @id @default(uuid())
   key         String            @unique
   name        String
+  iconUrl     String? 
   description String
   category    String // "speed" | "accuracy" | "volume" | "streak"
   tier        Int // 1 = bronze, 2 = silver, 3 = gold

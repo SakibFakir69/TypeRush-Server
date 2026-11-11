@@ -20,33 +20,51 @@ const getContests = async (query: GetContestsQuery) => {
     where.userId = query.userId;
   }
 
-  return prisma.contest.findMany({
+  const contests = await prisma.contest.findMany({
     where,
     include: { user: true },
     orderBy: { createdAt: "desc" },
   });
+
+  // The stored column never advances, so every read derives the phase from
+  // the scheduled window instead of trusting `Contest.condition`.
+  const now = Date.now();
+  return contests.map((contest) => ({
+    ...contest,
+    condition: resolveContestCondition(contest, now),
+  }));
 };
 
 const getMyContests = async (userId: string) => {
-  return prisma.contest.findMany({
+  const contests = await prisma.contest.findMany({
     where: { userId },
     include: { participants: true },
     orderBy: { createdAt: "desc" },
   });
+
+  const now = Date.now();
+  return contests.map((contest) => ({
+    ...contest,
+    condition: resolveContestCondition(contest, now),
+  }));
 };
 
 const findContestById = async (contestId: string) => {
-  return prisma.contest.findFirst({ where: { id: contestId } });
+  const contest = await prisma.contest.findFirst({ where: { id: contestId } });
+  if (!contest) return contest;
+  return { ...contest, condition: resolveContestCondition(contest, Date.now()) };
 };
 
 const getContestById = async (contestId: string) => {
-  return prisma.contest.findFirst({
+  const contest = await prisma.contest.findFirst({
     where: { id: contestId },
     include: {
       user: true,
       participants: { include: { user: true } },
     },
   });
+  if (!contest) return contest;
+  return { ...contest, condition: resolveContestCondition(contest, Date.now()) };
 };
 
 const findParticipant = async (userId: string, contestId: string) => {
@@ -76,7 +94,7 @@ type ContestWindow = { contestDate: Date; time: number };
  * ever advances it, so a finished contest still reads `UPCOMING` in the DB.
  * Derive the state from `contestDate` + `time` (seconds) on read instead.
  */
-function resolveContestCondition(
+export function resolveContestCondition(
   contest: ContestWindow,
   nowMs: number
 ): "UPCOMING" | "RUNNING" | "FINISHED" {
@@ -219,12 +237,17 @@ const getContestLeaderboard = async (contestId: string) => {
 const getAllLeaderboards = async () => {
   const contests = await prisma.contest.findMany({
     orderBy: { contestDate: "desc" },
-    select: { id: true, name: true, condition: true, contestDate: true },
+    select: { id: true, name: true, condition: true, contestDate: true, time: true },
   });
+
+  const now = Date.now();
 
   return Promise.all(
     contests.map(async (contest) => ({
-      contest,
+      contest: {
+        ...contest,
+        condition: resolveContestCondition(contest, now),
+      },
       leaderboard: await getContestLeaderboard(contest.id),
     }))
   );

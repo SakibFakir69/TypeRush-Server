@@ -7,6 +7,8 @@ import { userController } from "../users/user.controller.js";
 import { invitedController } from "../battle/invited/invited.controller.js";
 import { matchmakingStatController } from "../battle/matchmaking/stats.controller.js";
 import { getRecentMatchesAdminHandler } from "../battle/match/match.controller.js";
+import { achievementController } from "../achievements/achievement.controller.js";
+
 
 const router = Router();
 
@@ -41,5 +43,14 @@ router.get("/stats/matchmaking/history", verifyToken, verifyRole("ADMIN"), match
 
 // MATCH
 router.get("/match/recent", verifyToken, verifyRole("ADMIN"), getRecentMatchesAdminHandler);
+
+// ACHIEVEMENTS
+router.post("/achievements", verifyToken, verifyRole("ADMIN"), achievementController.createAchievement);
+router.get("/achievements", verifyToken, verifyRole("ADMIN"), achievementController.getAllAchievements);
+router.get("/achievements/:id", verifyToken, verifyRole("ADMIN"), achievementController.getAchievementById);
+router.patch("/achievements/:id", verifyToken, verifyRole("ADMIN"), achievementController.updateAchievement);
+router.delete("/achievements/:id", verifyToken, verifyRole("ADMIN"), achievementController.deleteAchievement);
+router.post("/achievements/:id/grant", verifyToken, verifyRole("ADMIN"), achievementController.grantUserAchievement);
+router.delete("/achievements/:id/users/:userId", verifyToken, verifyRole("ADMIN"), achievementController.revokeUserAchievement);
 
 export const adminRouter = router;
