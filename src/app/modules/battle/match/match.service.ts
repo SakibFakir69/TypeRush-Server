@@ -1,6 +1,8 @@
 import { prisma } from "../../../../lib/prisma.db.js";
 import { ablyClient } from "../../../../config/ably-config.js";
 import { markAcked } from "../matchmaking/matchAck.service.js";
+import { grantMatchXp } from "../../xp/xp.service.js";
+
 
 /** Everyone starts at 100 and moves in whole points. */
 const K_FACTOR = 24;
@@ -169,7 +171,7 @@ export async function submitMatchResult(
   return { match: toView(finished), finished: true as const };
 }
 
-/** Compares the two runs, applies Elo, and publishes the final state. */
+/** Compares the two runs, applies Elo, grants XP, and publishes the final state. */
 async function finishMatch(matchId: string) {
   const before = await loadMatch(matchId);
   if (before.status === "COMPLETED") return before;
@@ -200,24 +202,36 @@ async function finishMatch(matchId: string) {
   // Another request already finished it — return the settled match.
   if (claimed.count === 0) return loadMatch(matchId);
 
-  await prisma.$transaction([
-    prisma.matchParticipant.update({
+  await prisma.$transaction(async (tx) => {
+    await tx.matchParticipant.update({
       where: { matchId_userId: { matchId, userId: a.userId } },
       data: { ratingAfter: ratings.a, result: resultA },
-    }),
-    prisma.matchParticipant.update({
+    });
+    await tx.matchParticipant.update({
       where: { matchId_userId: { matchId, userId: b.userId } },
       data: { ratingAfter: ratings.b, result: resultB },
-    }),
-    prisma.user.update({
+    });
+    await tx.user.update({
       where: { id: a.userId },
       data: { rating: ratings.a },
-    }),
-    prisma.user.update({
+    });
+    await tx.user.update({
       where: { id: b.userId },
       data: { rating: ratings.b },
-    }),
-  ]);
+    });
+
+    // An invite-born match gets reduced, once-per-opponent-per-day XP.
+    const invite = await tx.privateInvite.findUnique({ where: { matchId } });
+
+    await grantMatchXp(tx, a.userId, resultA, a.wpm!, a.accuracy ?? 0, {
+      isInvited: !!invite,
+      opponentId: b.userId,
+    });
+    await grantMatchXp(tx, b.userId, resultB, b.wpm!, b.accuracy ?? 0, {
+      isInvited: !!invite,
+      opponentId: a.userId,
+    });
+  });
 
   const settled = await loadMatch(matchId);
   await ablyClient.channels
@@ -228,7 +242,7 @@ async function finishMatch(matchId: string) {
   return settled;
 }
 
-/** Leaving an unfinished race settles it as abandoned for both players. */
+/** Leaving an unfinished race settles it as abandoned for both players. No XP: ABANDONED earns 0. */
 export async function forfeitMatch(matchId: string, userId: string) {
   const participant = await prisma.matchParticipant.findUnique({
     where: { matchId_userId: { matchId, userId } },
