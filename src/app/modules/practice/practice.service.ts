@@ -4,6 +4,7 @@ import type { SubmitResultBody } from './pratice.validation.js';
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { prisma } from "../../../lib/prisma.db.js";
 import type { CreateParagraphInput } from "./pratice.validation.js";
+import { grantPracticeXp } from "../xp/xp.service.js";
 
 const createData = async (data: CreateParagraphInput, userId: string) => {
   const create_paragraph_data = await prisma.paragraph.create({
@@ -50,7 +51,21 @@ const submitPracticeResult = async (
     duration: data.duration ?? data.timeTaken ?? null,
   }
 
-  const result = await prisma.result.create({ data: createData });
+  // This endpoint's body has no contestId — it's practice-only, so every
+  // submission here earns practice XP. Contest XP is granted separately,
+  // from the ranked finishContest job once a contest ends.
+  const result = await prisma.$transaction(async (tx) => {
+    const created = await tx.result.create({ data: createData });
+    const xpAwarded = await grantPracticeXp(
+      tx,
+      userId,
+      created.wpm,
+      created.accuracy
+    );
+    // Hand the award back so the client can show it (and keep its cached
+    // session XP in sync) instead of silently changing the user's level.
+    return { ...created, xpAwarded };
+  });
 
   return result;
 };

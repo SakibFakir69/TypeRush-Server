@@ -6,6 +6,7 @@ import type {
   GetContestsQueryAll,
   SubmitContestResultBody,
 } from "./contest.validation.js";
+import { grantContestXp } from "../xp/xp.service.js";
 
 const createContest = async (data: CreateContestBody, userId: string) => {
   return prisma.contest.create({
@@ -127,13 +128,64 @@ const getAllContests = async (query: GetContestsQueryAll) => {
   };
 };
 
+type LivePlacementRow = {
+  userId: string;
+  wpm: number;
+  accuracy: number;
+  errors: number;
+};
+
+/**
+ * Best-result-per-user rank for a contest, computed live. There's no
+ * separate "contest finished" event in this codebase (condition is derived,
+ * never written), so placement-based XP is awarded off this live ranking
+ * at the moment of a user's first submission instead of waiting for a job
+ * that doesn't exist.
+ */
+async function getLivePlacement(
+  tx: Prisma.TransactionClient,
+  contestId: string,
+  userId: string
+): Promise<number | null> {
+  const rows = await tx.$queryRaw<LivePlacementRow[]>(Prisma.sql`
+    SELECT DISTINCT ON (r."userId")
+      r."userId", r."wpm", r."accuracy", r."errors"
+    FROM "Result" r
+    WHERE r."contestId" = ${contestId}
+    ORDER BY r."userId", r."wpm" DESC, r."accuracy" DESC, r."errors" ASC, r."createdAt" ASC
+  `);
+
+  const ranked = rows.sort(
+    (a, b) => b.wpm - a.wpm || b.accuracy - a.accuracy || a.errors - b.errors
+  );
+
+  const idx = ranked.findIndex((r) => r.userId === userId);
+  return idx === -1 ? null : idx + 1;
+}
+
 const submitContestResult = async (
   data: SubmitContestResultBody,
   userId: string,
   contestId: string
 ) => {
-  return prisma.result.create({
-    data: { ...data, userId, contestId },
+  return prisma.$transaction(async (tx) => {
+    // XP is paid out once per contest per user — repeat submissions still
+    // improve their leaderboard row, they just don't pay out XP again.
+    const priorSubmission = await tx.result.findFirst({
+      where: { userId, contestId },
+      select: { id: true },
+    });
+
+    const created = await tx.result.create({
+      data: { ...data, userId, contestId },
+    });
+
+    if (!priorSubmission) {
+      const placement = await getLivePlacement(tx, contestId, userId);
+      await grantContestXp(tx, userId, created.wpm, created.accuracy, placement);
+    }
+
+    return created;
   });
 };
 
