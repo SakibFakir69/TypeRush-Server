@@ -56,8 +56,15 @@ const submitPracticeResult = async (
   // from the ranked finishContest job once a contest ends.
   const result = await prisma.$transaction(async (tx) => {
     const created = await tx.result.create({ data: createData });
-    await grantPracticeXp(tx, userId, created.wpm, created.accuracy);
-    return created;
+    const xpAwarded = await grantPracticeXp(
+      tx,
+      userId,
+      created.wpm,
+      created.accuracy
+    );
+    // Hand the award back so the client can show it (and keep its cached
+    // session XP in sync) instead of silently changing the user's level.
+    return { ...created, xpAwarded };
   });
 
   return result;
