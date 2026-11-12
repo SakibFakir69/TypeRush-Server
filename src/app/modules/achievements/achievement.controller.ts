@@ -87,6 +87,16 @@ async function revokeUserAchievement(req: Request, res: Response) {
 
 // ---------- user-facing ----------
 
+/**
+ * The full catalogue for the signed-in user: every achievement plus the
+ * date this user unlocked it (null = still locked).
+ */
+async function getAchievementCatalog(req: Request, res: Response) {
+  const userId = req.user!.userId;
+  const achievements = await AchievementServices.getAchievementCatalog(userId);
+  return res.status(StatusCodes.OK).json({ success: true, data: achievements });
+}
+
 async function getMyAchievements(req: Request, res: Response) {
   const userId = req.user!.userId;
   const achievements = await AchievementServices.getUserAchievements(userId);
@@ -101,5 +111,6 @@ export const achievementController = {
   deleteAchievement,
   grantUserAchievement,
   revokeUserAchievement,
+  getAchievementCatalog,
   getMyAchievements,
 };

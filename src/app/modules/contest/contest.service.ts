@@ -7,6 +7,7 @@ import type {
   SubmitContestResultBody,
 } from "./contest.validation.js";
 import { grantContestXp } from "../xp/xp.service.js";
+import { unlockAchievementsForUser } from "../achievements/achievement.service.js";
 
 const createContest = async (data: CreateContestBody, userId: string) => {
   return prisma.contest.create({
@@ -186,7 +187,7 @@ const submitContestResult = async (
   userId: string,
   contestId: string
 ) => {
-  return prisma.$transaction(async (tx) => {
+  const created = await prisma.$transaction(async (tx) => {
     // XP is paid out once per contest per user — repeat submissions still
     // improve their leaderboard row, they just don't pay out XP again.
     const priorSubmission = await tx.result.findFirst({
@@ -194,17 +195,22 @@ const submitContestResult = async (
       select: { id: true },
     });
 
-    const created = await tx.result.create({
+    const result = await tx.result.create({
       data: { ...data, userId, contestId },
     });
 
     if (!priorSubmission) {
       const placement = await getLivePlacement(tx, contestId, userId);
-      await grantContestXp(tx, userId, created.wpm, created.accuracy, placement);
+      await grantContestXp(tx, userId, result.wpm, result.accuracy, placement);
     }
 
-    return created;
+    return result;
   });
+
+  // A contest run counts towards the same badges a practice run does.
+  const unlockedAchievements = await unlockAchievementsForUser(userId);
+
+  return { ...created, unlockedAchievements };
 };
 
 type LeaderboardRow = {

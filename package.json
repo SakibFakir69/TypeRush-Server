@@ -5,6 +5,7 @@
     "start": "node dist/app/server.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "seed:achievements": "tsx src/scripts/seed-achievements.ts",
     "postinstall": "prisma skills sync || exit 0"
   },
   "dependencies": {
