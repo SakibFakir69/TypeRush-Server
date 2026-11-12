@@ -70,7 +70,9 @@ model User {
   matchParticipation MatchParticipant[]   @relation("MatchParticipant")
   invitesSent        PrivateInvite[]      @relation("InviteInviter")
   invitesReceived    PrivateInvite[]      @relation("InviteInvitee")
+  stats          UserStats?
 }
+
 
 model Result {
   id          String     @id @default(uuid())
@@ -224,4 +226,16 @@ model UserAchievement {
 
   @@unique([userId, achievementId])
   @@index([userId])
+}
+
+model UserStats {
+  userId         String   @id
+  user           User     @relation(fields: [userId], references: [id])
+  totalSessions  Int      @default(0)
+  totalTimeTyped Int      @default(0)
+  bestWpm        Float    @default(0)
+  bestAccuracy   Float    @default(0)
+  avgWpm         Float    @default(0)
+  avgAccuracy    Float    @default(0)
+  updatedAt      DateTime @updatedAt
 }

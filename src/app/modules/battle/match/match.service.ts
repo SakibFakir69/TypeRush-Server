@@ -2,10 +2,25 @@ import { prisma } from "../../../../lib/prisma.db.js";
 import { ablyClient } from "../../../../config/ably-config.js";
 import { markAcked } from "../matchmaking/matchAck.service.js";
 import { grantMatchXp } from "../../xp/xp.service.js";
+import { unlockAchievementsForUser } from "../../achievements/achievement.service.js";
 
 
 /** Everyone starts at 100 and moves in whole points. */
 const K_FACTOR = 24;
+
+/**
+ * Badge check overrides for a battle run. Only the numbers we actually have
+ * are passed on — an unset key is left out entirely.
+ */
+const badgeOverrides = (
+  wpm: number | null | undefined,
+  accuracy: number | null | undefined
+): { speed?: number; accuracy?: number } => {
+  const overrides: { speed?: number; accuracy?: number } = {};
+  if (typeof wpm === "number") overrides.speed = wpm;
+  if (typeof accuracy === "number") overrides.accuracy = accuracy;
+  return overrides;
+};
 
 export type MatchResultInput = {
   wpm: number;
@@ -232,6 +247,12 @@ async function finishMatch(matchId: string) {
       opponentId: a.userId,
     });
   });
+
+  // A battle isn't stored as a `Result`, so its WPM and accuracy are merged
+  // into the badge check by hand. The badges unlock silently here — the next
+  // page load shows them.
+  await unlockAchievementsForUser(a.userId, badgeOverrides(a.wpm, a.accuracy));
+  await unlockAchievementsForUser(b.userId, badgeOverrides(b.wpm, b.accuracy));
 
   const settled = await loadMatch(matchId);
   await ablyClient.channels

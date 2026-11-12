@@ -1,0 +1,16 @@
+-- CreateTable
+CREATE TABLE "UserStats" (
+    "userId" TEXT NOT NULL,
+    "totalSessions" INTEGER NOT NULL DEFAULT 0,
+    "totalTimeTyped" INTEGER NOT NULL DEFAULT 0,
+    "bestWpm" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "bestAccuracy" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "avgWpm" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "avgAccuracy" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "UserStats_pkey" PRIMARY KEY ("userId")
+);
+
+-- AddForeignKey
+ALTER TABLE "UserStats" ADD CONSTRAINT "UserStats_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

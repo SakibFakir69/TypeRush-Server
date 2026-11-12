@@ -5,6 +5,7 @@ import type { SubmitResultBody } from './pratice.validation.js';
 import { prisma } from "../../../lib/prisma.db.js";
 import type { CreateParagraphInput } from "./pratice.validation.js";
 import { grantPracticeXp } from "../xp/xp.service.js";
+import { unlockAchievementsForUser } from "../achievements/achievement.service.js";
 
 const createData = async (data: CreateParagraphInput, userId: string) => {
   const create_paragraph_data = await prisma.paragraph.create({
@@ -67,7 +68,12 @@ const submitPracticeResult = async (
     return { ...created, xpAwarded };
   });
 
-  return result;
+  // Badges are unlocked right after the run is stored, in their own short
+  // transaction: the run that crosses a threshold unlocks the badge, and a
+  // slow badge check never delays (or fails) the saved run.
+  const unlockedAchievements = await unlockAchievementsForUser(userId);
+
+  return { ...result, unlockedAchievements };
 };
 
 

@@ -24,6 +24,8 @@ import matchmakingRoutes from "./modules/battle/matchmaking/matchmaking.route.js
 import { matchRoutes } from "./modules/battle/match/match.route.js";
 import { ablyRoutes } from "./modules/battle/ably/ably.route.js";
 import { invitedRouter } from "./modules/battle/invited/invited.route.js";
+import achievementRouter from "./modules/achievements/achievement.route.js";
+import { progressRouter } from "./modules/progress/progress.routes.js";
 
 
 const app = express();
@@ -67,6 +69,13 @@ app.use("/api/v1/matchmaking", matchmakingRoutes);
 app.use("/api/v1/matches", matchRoutes);
 app.use("/api/v1/battle", invitedRouter);
 app.use('/api/v1/ably', ablyRoutes)
+app.use('/api/v1/achievements', achievementRouter)
+app.use('/api/v1/progress',progressRouter )
+
+
+
+
+
 
 app.get('/', (req: Request, res: Response)  => {
 
