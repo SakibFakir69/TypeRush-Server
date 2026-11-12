@@ -6,6 +6,7 @@ import { prisma } from "../../../lib/prisma.db.js";
 import type { CreateParagraphInput } from "./pratice.validation.js";
 import { grantPracticeXp } from "../xp/xp.service.js";
 import { unlockAchievementsForUser } from "../achievements/achievement.service.js";
+import { progressService } from "../progress/progress.service.js";
 
 const createData = async (data: CreateParagraphInput, userId: string) => {
   const create_paragraph_data = await prisma.paragraph.create({
@@ -72,6 +73,17 @@ const submitPracticeResult = async (
   // transaction: the run that crosses a threshold unlocks the badge, and a
   // slow badge check never delays (or fails) the saved run.
   const unlockedAchievements = await unlockAchievementsForUser(userId);
+
+  // The lifetime totals behind the progress screen (runs, time typed, best
+  // and average numbers) are folded in the same way: their own short
+  // transaction, so the saved run is never held open by the stats write.
+  await progressService.recordUserStatsSafe(userId, {
+    wpm: result.wpm,
+    accuracy: result.accuracy,
+    // The seconds the run really took — the same number the progress screen
+    // sums up when it recomputes the totals from the results table.
+    timeTyped: result.timeTaken ?? result.duration ?? 0,
+  });
 
   return { ...result, unlockedAchievements };
 };

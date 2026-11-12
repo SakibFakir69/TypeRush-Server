@@ -134,6 +134,13 @@ const getUserAchievements = async (userId: string) => {
  * page renders: the full catalogue with the locked ones greyed out.
  */
 const getAchievementCatalog = async (userId: string) => {
+  // Badges unlock the moment the user's numbers cross a threshold — a run
+  // that was saved outside the practice flow (a battle, a seeded result) must
+  // count too. The check only ever writes the rows that are missing, and it
+  // never fails the read: a badge that cannot be unlocked yet simply stays
+  // locked until the next run.
+  await unlockAchievementsForUser(userId);
+
   const rows = await prisma.achievement.findMany({
     orderBy: [
       { category: "asc" },
