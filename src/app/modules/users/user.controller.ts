@@ -60,6 +60,7 @@ const createUser = async (req: Request, res: Response, next: NextFunction) => {
     return returnResponse(res, true, StatusCodes.CREATED, "User created. Please verify your email.", userWithoutPassword);
 
   } catch (error) {
+    
     if (error instanceof ZodError) {
       res.status(400).json({ message: "Validation failed" });
       return;
