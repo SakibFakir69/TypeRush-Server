@@ -13,7 +13,7 @@ export const userSchema = z.object({
   country: z.string().min(1),
   avatarUrl: z.string().url().optional(),
   bio: z.string().max(500).optional(),
-  role:z.enum(["ORG","USER"]),
+  role:z.enum(["ORG","USER"]).default("USER"),
   createdAt: z.date(),
   updatedAt: z.date(),
 });

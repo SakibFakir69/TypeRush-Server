@@ -8,6 +8,7 @@ import type {
 } from "./contest.validation.js";
 import { grantContestXp } from "../xp/xp.service.js";
 import { unlockAchievementsForUser } from "../achievements/achievement.service.js";
+import { progressService } from "../progress/progress.service.js";
 
 const createContest = async (data: CreateContestBody, userId: string) => {
   return prisma.contest.create({
@@ -209,6 +210,13 @@ const submitContestResult = async (
 
   // A contest run counts towards the same badges a practice run does.
   const unlockedAchievements = await unlockAchievementsForUser(userId);
+
+  // …and towards the same lifetime totals behind the progress screen.
+  await progressService.recordUserStatsSafe(userId, {
+    wpm: created.wpm,
+    accuracy: created.accuracy,
+    timeTyped: created.timeTaken ?? created.duration ?? 0,
+  });
 
   return { ...created, unlockedAchievements };
 };

@@ -57,6 +57,7 @@ Express app  ── helmet, CORS, JSON, cookies, global rate limit
    ├─ /api/v1/users          users + signup + profile
    ├─ /api/v1/auth           sessions, OTP, Google, password reset
    ├─ /api/v1/practices      passages, results, stats
+   ├─ /api/v1/progress       lifetime totals, daily curve, run history
    ├─ /api/v1/contests       lifecycle, join/leave, submit, boards
    ├─ /api/v1/admin          contests, passages, users
    ├─ /api/v1/announcements  admin CRUD
@@ -201,6 +202,22 @@ Base path: `/api/v1`. Interactive docs: `/docs`.
 | `GET` | `/practices/results` | Leaderboard; filter by `duration`, paginate with `offset`. |
 | `POST` | `/practices/results` | Submit a run (`wpm`, `accuracy`, `errors`, `timeTaken`, `duration`). |
 | `GET` | `/practices/stats/me` | Dashboard stats, 90-day history, recent runs, contest counts. |
+
+### Progress
+
+The personal progress screen. All three routes need a session and only ever
+return the caller's own numbers.
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| `GET` | `/progress/overview` | Lifetime totals: `totalSessions`, `totalTimeTyped` (seconds), `bestWpm`, `bestAccuracy`, `avgWpm`, `avgAccuracy`. |
+| `GET` | `/progress/charts` | `?range=7d\|30d\|90d` — one row per day: `day`, `avgWpm`, `maxWpm`, `avgAccuracy`, `sessions`. |
+| `GET` | `/progress/history` | `?page=&limit=` (max 100) and an optional window: `from` + `to` (both ISO datetimes, max 1 year apart). The window is only applied when **both** ends are sent. |
+
+The totals live in the `UserStats` row and are folded in whenever a run is
+saved (practice and contest). An account that typed before that writer
+existed has no row, so `overview` recomputes the numbers from the results
+table and backfills the row on the next read.
 
 ### Contests
 
