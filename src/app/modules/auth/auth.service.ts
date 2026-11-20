@@ -16,11 +16,14 @@ class AuthError extends Error {
 }
 
 const login = async (email: string, password: string) => {
-  const user = await prisma.user.findFirst({ where: { email } });
-  if (!user) {
-    throw new AuthError(400, "Invalid email or password");
-  }
 
+  const user = await prisma.user.findFirst({ where: { email } });
+
+  if (!user || !user.password) {
+  throw new AuthError(400, "Invalid email or password");
+}
+
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
   const isCorrectPassword = await bcrypt.compare(password, user.password as string);
   if (!isCorrectPassword) {
     throw new AuthError(400, "Invalid email or password");
